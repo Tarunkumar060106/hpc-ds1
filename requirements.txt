@@ -1,0 +1,6 @@
+# PyTorch with CUDA (GPU optional; CPU-only works, the GPU actions just become unavailable).
+# Install the CUDA build from https://pytorch.org/get-started/locally/ for your driver.
+torch>=2.4
+numpy>=1.26
+psutil>=5.9
+pytest>=7   # tests only

@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.venv/
+venv/
+
+# Editors
+.vscode/
+.idea/
+
+# Old simulator-era artefacts: large checkpoints and synthetic data (code is kept)
+archive/**/*.pt
+archive/simulator_era/data/
+
+# Per-machine state written by `hpc-ds1 setup` / `serve` lives in ~/.hpc_ds1, not here
