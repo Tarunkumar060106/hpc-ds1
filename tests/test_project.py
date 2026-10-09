@@ -1,0 +1,237 @@
+"""Fast checks: config space, real kernel decomposition, labelling, the API.
+
+    python -m pytest tests -q
+"""
+
+import json
+from pathlib import Path
+
+import numpy as np
+import pytest
+import torch
+
+from hpc_ds1.dataset import build_states, label
+from hpc_ds1.kernels import KERNELS
+from hpc_ds1.runner import Engine
+from hpc_ds1.space import ACTIONS, STOP, all_configs, apply_action, config_key, in_space, make_config, valid_actions
+
+ROOT = Path(__file__).resolve().parent.parent
+SMALL = {"gemm": 256, "fft": 32, "stencil": 32, "spmv": 4000, "nbody": 512, "montecarlo": 200_000,
+         "mltrain": 256, "server": 64}
+
+
+def test_space_is_closed_under_valid_actions():
+    for c in all_configs():
+        for a in valid_actions(c):
+            n = apply_action(c, a)
+            assert in_space(n), (c, a, n)
+    assert len(all_configs()) == 44
+    assert "USE_GPU" not in valid_actions(make_config(), has_gpu=False)
+
+
+def test_apply_action_examples():
+    c = make_config(ranks=2, threads=4)
+    assert apply_action(c, "ADD_RANKS") == make_config(4, 4)
+    assert apply_action(c, "USE_GPU") == make_config(1, 4, True)
+    assert apply_action(make_config(1, 1), "REMOVE_RANKS") is None
+    assert apply_action(c, STOP) == c
+
+
+@pytest.mark.parametrize("workload", list(KERNELS))
+def test_rank_decomposition_matches_single_rank(workload):
+    k = KERNELS[workload]
+    size = SMALL[workload]
+
+    def run(nshards):
+        parts = []
+        for s in range(nshards):
+            inp = k.setup(size, s, nshards, "cpu", torch.float32)
+            parts.append(k.run(inp))
+        return k.combine(parts, size).numpy()
+
+    one, four = run(1), run(4)
+    err = np.linalg.norm(four - one) / np.linalg.norm(one)
+    assert err <= k.tolerance, err
+
+
+def test_engine_measures_real_runs():
+    eng = Engine()
+    try:
+        r1 = eng.measure("gemm", 256, {"ranks": 1, "threads": 2}, min_total=0.0)
+        r2 = eng.measure("gemm", 256, {"ranks": 2, "threads": 1}, min_total=0.0)
+    finally:
+        eng.close()
+    assert r1["ok"] and r2["ok"]
+    assert r1["telemetry"]["runtime_sec"] > 0
+    assert np.allclose(r1["result"], r2["result"], rtol=1e-4, atol=1e-3)
+
+
+def test_label_uses_measured_runtimes_and_noise_floor():
+    tel = lambda rt: {"runtime_sec": rt, "noise_pct": 1.0}  # noqa: E731
+    base = make_config(1, 1)
+    table = {config_key(base): tel(1.0), config_key(make_config(2, 1)): tel(0.5),
+             config_key(make_config(1, 2)): tel(0.6)}
+    action, gain, outcomes = label(base, table)
+    assert action == "ADD_RANKS" and abs(gain - 0.5) < 1e-9
+    assert outcomes["USE_BF16"] is None  # never measured -> unknown, not invented
+    table[config_key(make_config(2, 1))] = tel(0.97)
+    table[config_key(make_config(1, 2))] = tel(0.98)
+    assert label(base, table)[0] == STOP  # 3% faster is inside the 5% noise floor
+
+
+@pytest.mark.skipif(not (ROOT / "model" / "hpc_ds1.pt").exists(), reason="train the model first")
+def test_api_decides_on_real_states():
+    import hpc_ds1
+    from hpc_ds1.dataset import build_tables, load_hardware, load_measurements
+    model = hpc_ds1.load(device="cpu")
+    tables, _ = build_tables(load_measurements())
+    states = build_states(dict(list(tables.items())[:1]), load_hardware())
+    d = model.decide(states[0]["state"])
+    assert d.choice in ACTIONS and 0 <= d.confidence <= 1
+    assert abs(sum(d.probabilities.values()) - 1) < 1e-3
+    d2 = model.decide(states[0]["state"], ["STOP_TUNING", "ADD_THREADS"])
+    assert set(d2.probabilities) <= {"STOP_TUNING", "ADD_THREADS"}
+    t = model.trace(states[0]["state"])
+    assert set(t["layers"]) >= {c["id"] for c in model.layer_catalog()}
+    json.dumps(t)
+
+
+def _real_states(workloads=None):
+    from hpc_ds1.dataset import build_tables, load_hardware, load_measurements
+    hw = load_hardware()
+    tables, _ = build_tables(load_measurements())
+    if workloads:
+        tables = {k: v for k, v in tables.items() if k[0] in workloads}
+    return build_states(tables, hw), hw
+
+
+def test_decision_tiers():
+    from hpc_ds1.api import decision_mode
+    assert decision_mode(0.9, True, 0.85, 0.5) == "auto"
+    assert decision_mode(0.7, True, 0.85, 0.5) == "confirm"
+    assert decision_mode(0.3, True, 0.85, 0.5) == "escalate"
+    assert decision_mode(0.99, False, 0.85, 0.5) == "escalate"  # unfamiliar is never automatic
+
+
+def test_guard_flags_unseen_kernel_size_and_machine():
+    from hpc_ds1.guard import FamiliarityGuard
+    states, hw = _real_states()
+    rest = [s["state"] for s in states if s["workload"] != "fft"]
+    guard = FamiliarityGuard.fit(rest[::2], rest[1::2], hw)
+    assert sum(c["familiar"] for c in guard.check(rest[1::2])) >= 0.95 * len(rest[1::2])
+    fft = [s["state"] for s in states if s["workload"] == "fft"][:20]
+    assert not any(c["familiar"] for c in guard.check(fft))
+    big = dict(rest[0], workload={"name": rest[0]["workload"]["name"], "size": 10 ** 9})
+    assert any("outside the measured range" in r for r in guard.check([big])[0]["reasons"])
+    other = dict(rest[0], hardware={**rest[0]["hardware"], "cpu_threads": 128, "cpu_cores": 64})
+    assert any("different machine" in r for r in guard.check([other])[0]["reasons"])
+    assert FamiliarityGuard.from_dict(json.loads(json.dumps(guard.to_dict()))).check(fft)[0]["familiar"] is False
+
+
+def test_tuner_asks_human_when_policy_says_so():
+    from hpc_ds1.tuner import TableRunner, run_tuning
+    states, hw = _real_states(["stencil"])
+    inst = ("stencil", states[0]["size"])
+    from hpc_ds1.dataset import build_tables, load_measurements
+    table = build_tables(load_measurements())[0][inst]
+    asked = []
+    policy = lambda state, exclude=(): ("ADD_THREADS", 0.99, 0, True)  # noqa: E731  confident but needs a human
+    r = run_tuning(policy, *inst, make_config(1, 1), TableRunner(table, hw), threshold=0.85,
+                   on_escalate=lambda a, c, s: asked.append(a) or False)
+    assert asked == ["ADD_THREADS"] and r.stopped_reason == "escalation_declined"
+
+
+def test_setup_trains_this_machines_model(tmp_path, monkeypatch):
+    from hpc_ds1.dataset import data_dir
+    from hpc_ds1.onboard import setup
+    src = data_dir()
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "hardware.json").write_text((src / "hardware.json").read_text())
+    rows = [line for line in (src / "measurements.jsonl").read_text().splitlines()
+            if json.loads(line)["workload"] in ("stencil", "gemm")]
+    (data / "measurements.jsonl").write_text("\n".join(rows) + "\n")
+    report = setup(tmp_path, collect_data=False, size="tiny", device="cpu", log=lambda m: None)
+    assert (tmp_path / "model" / "hpc_ds1.pt").exists() and report["test_accuracy"] > 0.5
+    fft = [s["state"] for s in _real_states(["fft"])[0]][:1]
+    monkeypatch.setenv("HPC_DS1_HOME", str(tmp_path))  # load() now prefers this machine's own model
+    import hpc_ds1
+    model = hpc_ds1.load(device="cpu")
+    assert model.guard is not None and set(model.guard.workloads) == {"stencil", "gemm"}
+    d = model.decide(fft[0])
+    assert d.mode == "escalate" and not d.familiar
+
+
+def test_cli_parses():
+    import subprocess
+    import sys
+    out = subprocess.run([sys.executable, "-m", "hpc_ds1", "--help"], capture_output=True, text=True, cwd=ROOT)
+    assert out.returncode == 0 and "setup" in out.stdout
+
+
+def test_fleet_places_on_earliest_finish_and_audits(tmp_path):
+    from hpc_ds1.facility import AuditLog
+    from hpc_ds1.fleet import Fleet, estimate_runtime
+    audit = AuditLog(tmp_path / "audit.jsonl")
+    fleet = Fleet(audit=audit)
+    fast = fleet.register("gpu-box", {"name": "a"}, {"gemm": {"2048": 0.01}}, {})
+    slow = fleet.register("old-laptop", {"name": "b"}, {"gemm": {"2048": 0.5}}, {})
+    fleet.register("new-box", {"name": "c"}, {}, {})  # nothing measured: no estimate
+    assert abs(estimate_runtime(fast["profile"], "gemm", 4096) - 0.08) < 1e-9  # work scales as n^3
+    t = fleet.submit("gemm", 2048)
+    assert t["device"] == fast["id"]
+    assert any(c["note"] for c in t["placement"]["candidates"])
+    for _ in range(60):  # fill the fast device's queue until the slow one finishes earlier
+        if fleet.submit("gemm", 2048)["device"] == slow["id"]:
+            break
+    else:
+        raise AssertionError("queue time never moved work to the other device")
+    got = fleet.poll(fast["id"])
+    state = {"workload": {"name": "gemm", "size": 2048}, "config": got["config"], "telemetry": {"runtime_sec": 0.2}}
+    dec = {"choice": "USE_GPU", "confidence": 0.7, "mode": "confirm", "reasons": []}
+    fleet.update(got["id"], fast["id"], {"event": {"decision": dec, "state": state}})
+    fleet.update(got["id"], fast["id"], {"pending": {"action": "USE_GPU", "confidence": 0.7, "mode": "confirm"}})
+    assert fleet.queue()[0]["task"] == got["id"]
+    fleet.approve(got["id"], True, "alice")
+    assert fleet.update(got["id"], fast["id"], {})["answer"]["approve"] is True
+    row = audit.recent()[0]
+    assert row["choice"] == "USE_GPU" and row["approved_by"] == "alice"
+    assert (tmp_path / "audit.jsonl").exists()
+
+
+def test_server_workload_has_no_gpu_or_bf16_version():
+    k = KERNELS["server"]
+    with pytest.raises(RuntimeError):
+        k.setup(64, 0, 1, "cuda", torch.float32)
+    with pytest.raises(RuntimeError):
+        k.setup(64, 0, 1, "cpu", torch.bfloat16)
+
+
+def test_model_inputs_follow_its_own_workload_list():
+    from hpc_ds1.features import featurize
+    from hpc_ds1.net import HPCDS1Net
+    state = {"hardware": {"cpu_threads": 16}, "workload": {"name": "brand_new_task", "size": 1000},
+             "config": {"ranks": 1, "threads": 1, "gpu": False, "precision": "fp32"},
+             "telemetry": {"runtime_sec": 0.1}}
+    net = HPCDS1Net(dim=32, encoder_blocks=1, fusion_layers=1, heads=4, ffn_dim=64, workloads=["gemm", "fft"])
+    f = featurize([state], workloads=net.workloads)
+    assert f["workload"].shape[1] == 2 + 2 and f["workload"][0, 2:].sum() == 0  # unknown task: no identity
+    out = net(f)
+    assert out["logits"].shape[1] == len(ACTIONS)
+
+
+def test_plugin_task_is_discovered_from_home_folder(tmp_path):
+    import shutil
+    import subprocess
+    import sys
+    (tmp_path / "plugins").mkdir()
+    shutil.copy(ROOT / "examples" / "plugins" / "etl_batch.py", tmp_path / "plugins")
+    code = ("from hpc_ds1.kernels import KERNELS, WORKLOAD_NAMES; import numpy as np, torch; k = KERNELS['etl']; "
+            "one = k.combine([k.run(k.setup(5000, 0, 1, 'cpu', torch.float32))], 5000); "
+            "four = k.combine([k.run(k.setup(5000, s, 4, 'cpu', torch.float32)) for s in range(4)], 5000); "
+            "print(WORKLOAD_NAMES[-1], float((one - four).abs().max()))")
+    env = {**__import__("os").environ, "HPC_DS1_HOME": str(tmp_path)}
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=ROOT, env=env)
+    assert out.returncode == 0, out.stderr
+    name, err = out.stdout.split()
+    assert name == "etl" and float(err) < 1e-3
