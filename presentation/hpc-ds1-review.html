@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HPC-DS1 Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   THEME — change these to restyle the deck
+   =========================================== */
+:root {
+    --stage-bg: #070b09;
+    --slide-bg: #0d1411;
+    --ink: #eef3ec;
+    --muted: #8fa199;
+    --line: rgba(238, 243, 236, 0.12);
+    --amber: #ffb547;      /* the model / main accent */
+    --teal: #5ee6c2;       /* "good" / success */
+    --red: #ff6b5b;        /* failure / slower */
+    --panel: #121b17;
+    --font-display: 'Bricolage Grotesque', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   =========================================== */
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--stage-bg, #000); }
+.deck-viewport { position: fixed; inset: 0; overflow: hidden; background: var(--stage-bg, #000); }
+.deck-stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; transform-origin: 0 0; background: var(--slide-bg, #fff); }
+.slide { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: hidden; display: block; visibility: hidden; opacity: 0; pointer-events: none; background: var(--slide-bg, #fff); }
+.slide.active, .slide.visible { visibility: visible; opacity: 1; pointer-events: auto; z-index: 1; }
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+.deck-controls { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 1000; }
+@media print {
+    html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide { position: relative; display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; width: 1920px; height: 1080px; break-after: page; page-break-after: always; }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    .deck-controls { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+}
+
+/* ===========================================
+   SLIDE ATMOSPHERE — faint oscilloscope grid + glow
+   =========================================== */
+.slide {
+    font-family: var(--font-display);
+    color: var(--ink);
+    padding: 110px 140px;
+    background:
+        radial-gradient(900px 600px at 85% 15%, rgba(255,181,71,0.07), transparent 70%),
+        linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 120px 120px,
+        linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 120px 120px,
+        var(--slide-bg);
+    background-blend-mode: normal;
+}
+.slide::before { /* soften the grid toward the edges */
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 40%, var(--slide-bg) 95%);
+}
+.slide > * { position: relative; }
+
+/* Chrome: small mono label top-left, page number top-right */
+.tag { font-family: var(--font-mono); font-size: 22px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber); margin-bottom: 36px; }
+.pg { position: absolute; top: 110px; right: 140px; font-family: var(--font-mono); font-size: 22px; color: var(--muted); }
+
+/* ===========================================
+   TYPOGRAPHY
+   =========================================== */
+h1 { font-size: 150px; font-weight: 800; line-height: 0.95; letter-spacing: -0.035em; }
+h2 { font-size: 92px; font-weight: 800; line-height: 1.02; letter-spacing: -0.03em; max-width: 1500px; }
+h3 { font-size: 40px; font-weight: 600; letter-spacing: -0.01em; }
+p.lead { font-size: 40px; line-height: 1.35; color: var(--muted); max-width: 1350px; margin-top: 40px; }
+.hl { color: var(--amber); }
+.ok { color: var(--teal); }
+.bad { color: var(--red); }
+.mono { font-family: var(--font-mono); }
+.note { font-family: var(--font-mono); font-size: 22px; color: var(--muted); position: absolute; bottom: 90px; left: 140px; max-width: 1640px; }
+
+/* ===========================================
+   ANIMATIONS — staggered reveal on the active slide
+   =========================================== */
+.reveal { opacity: 0; transform: translateY(34px); transition: opacity .8s var(--ease), transform .8s var(--ease); }
+.slide.visible .reveal { opacity: 1; transform: none; }
+.d1 { transition-delay: .08s } .d2 { transition-delay: .2s } .d3 { transition-delay: .32s }
+.d4 { transition-delay: .44s } .d5 { transition-delay: .56s } .d6 { transition-delay: .68s }
+
+/* ===========================================
+   COMPONENTS
+   =========================================== */
+/* Cards in a row */
+.grid { display: grid; gap: 32px; margin-top: 70px; }
+.g2 { grid-template-columns: repeat(2, 1fr); }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+.g4 { grid-template-columns: repeat(4, 1fr); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 44px 40px; }
+.card .k { font-family: var(--font-mono); font-size: 20px; color: var(--amber); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 22px; }
+.card h3 { margin-bottom: 16px; }
+.card p { font-size: 28px; line-height: 1.4; color: var(--muted); }
+
+/* Big number stat */
+.stat .n { font-size: 130px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+.stat .l { font-size: 30px; color: var(--muted); margin-top: 14px; line-height: 1.3; }
+
+/* Flow diagram: boxes joined by arrows */
+.flow { display: flex; align-items: stretch; gap: 0; margin-top: 80px; }
+.flow .step { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 40px 34px; }
+.flow .step .num { font-family: var(--font-mono); font-size: 22px; color: var(--amber); }
+.flow .step h3 { margin: 14px 0 14px; font-size: 38px; }
+.flow .step p { font-size: 26px; color: var(--muted); line-height: 1.4; }
+.flow .arrow { width: 70px; display: grid; place-items: center; color: var(--amber); font-size: 48px; }
+
+/* Bar chart rows */
+.bars { margin-top: 70px; display: grid; gap: 34px; max-width: 1640px; }
+.bar { display: grid; grid-template-columns: 420px 1fr 260px; align-items: center; gap: 30px; font-size: 32px; }
+.bar .track { height: 54px; background: rgba(238,243,236,0.05); border-radius: 12px; overflow: hidden; }
+.bar .fill { height: 100%; border-radius: 12px; background: var(--muted); width: 0; transition: width 1.4s var(--ease) .4s; }
+.slide.visible .bar .fill { width: var(--w); }
+.bar.me .fill { background: var(--amber); }
+.bar .v { font-family: var(--font-mono); font-size: 30px; }
+.bar .v small { display: block; font-size: 20px; color: var(--muted); }
+
+/* Comparison table */
+table { border-collapse: collapse; margin-top: 60px; font-size: 32px; width: 1640px; }
+th { font-family: var(--font-mono); font-size: 20px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 0 24px 20px; font-weight: 400; }
+td { padding: 26px 24px; border-top: 1px solid var(--line); }
+td.num { font-family: var(--font-mono); }
+
+/* Confidence gauge */
+.gauge { margin-top: 90px; width: 1640px; }
+.gauge .strip { position: relative; height: 90px; border-radius: 16px; display: flex; overflow: hidden; }
+.gauge .esc { width: 40%; background: rgba(255,107,91,0.18); border: 1px solid rgba(255,107,91,0.5); display: grid; place-items: center; font-size: 32px; border-radius: 16px 0 0 16px; }
+.gauge .auto { width: 60%; background: rgba(94,230,194,0.16); border: 1px solid rgba(94,230,194,0.5); display: grid; place-items: center; font-size: 32px; border-radius: 0 16px 16px 0; }
+.gauge .labels { display: flex; justify-content: space-between; margin-top: 22px; font-family: var(--font-mono); font-size: 22px; color: var(--muted); }
+
+/* Title slide decoration: a "tuning trace" line */
+.trace { position: absolute; right: 120px; bottom: 140px; width: 760px; height: 420px; }
+.trace path { fill: none; stroke: var(--amber); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 1600; stroke-dashoffset: 1600; transition: stroke-dashoffset 2.4s var(--ease) .5s; }
+.slide.visible .trace path { stroke-dashoffset: 0; }
+.trace circle { fill: var(--amber); opacity: 0; transition: opacity .4s 2.4s; }
+.slide.visible .trace circle { opacity: 1; }
+
+/* Knob chips */
+.chips { display: flex; gap: 14px; margin-top: 26px; flex-wrap: wrap; }
+.chip { font-family: var(--font-mono); font-size: 22px; padding: 10px 18px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); }
+
+/* Differentiator matrix */
+.matrix { width: 1640px; margin-top: 34px; font-size: 26px; }
+.matrix th { font-size: 17px; padding: 0 16px 16px; text-align: center; line-height: 1.35; }
+.matrix th:first-child { text-align: left; }
+.matrix td { padding: 9px 16px; text-align: center; }
+.matrix td:first-child { text-align: left; }
+.matrix th.me, .matrix td.me { background: rgba(255,181,71,0.09); color: var(--amber); }
+.matrix th.me { border-radius: 14px 14px 0 0; }
+.y { color: var(--teal); font-weight: 800; } .x { color: rgba(238,243,236,0.25); } .p { color: var(--muted); font-family: var(--font-mono); font-size: 20px; }
+.only { display: grid; grid-template-columns: 90px 1fr; gap: 10px 26px; margin-top: 54px; max-width: 1600px; align-items: baseline; }
+.only .i { font-family: var(--font-mono); font-size: 30px; color: var(--amber); }
+.only .t { font-size: 40px; font-weight: 600; letter-spacing: -0.01em; }
+.only .t span { color: var(--muted); font-weight: 400; font-size: 30px; }
+
+/* Code snippet cards for the plug-in slide */
+.code { font-family: var(--font-mono); font-size: 23px; line-height: 1.6; background: #0a100d; border: 1px solid var(--line); border-radius: 14px; padding: 24px 26px; margin-top: 22px; color: var(--ink); white-space: pre; }
+.code .c { color: var(--muted); } .code .a { color: var(--amber); }
+
+/* ===========================================
+   PROGRESS BAR + EDIT MODE (outside stage)
+   =========================================== */
+.progress { position: fixed; left: 0; bottom: 0; height: 4px; background: var(--amber); transition: width .5s var(--ease); z-index: 1000; }
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+.edit-toggle { position: fixed; top: 18px; left: 18px; z-index: 10001; opacity: 0; pointer-events: none; transition: opacity .3s; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 18px; cursor: pointer; }
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { background: var(--amber); color: #111; }
+[contenteditable="true"] { outline: 1px dashed rgba(255,181,71,.5); }
+</style>
+</head>
+<body>
+<div class="edit-hotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️ Edit</button>
+<div class="progress" id="progress"></div>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- ========== 1. TITLE ========== -->
+<section class="slide active">
+    <div class="tag reveal d1">Project review · 9 Oct 2026</div>
+    <h1 class="reveal d2">HPC-DS1</h1>
+    <p class="lead reveal d3" style="font-size:48px;color:var(--ink);max-width:1000px">An assistant that learns how to make<br>a computing job run <span class="hl">faster</span>, and knows when to ask a human.<br><span style="color:var(--muted);font-size:36px">A plug-in for any system. Learns the machine it runs on.</span></p>
+    <svg class="trace" viewBox="0 0 760 420" aria-hidden="true">
+        <path d="M10 40 L150 40 L150 140 L300 140 L300 210 L450 210 L450 300 L600 300 L600 380 L750 380"/>
+        <circle cx="750" cy="380" r="12"/>
+    </svg>
+    <div class="note reveal d4">Runtime going down, one change at a time · all measured on this laptop</div>
+</section>
+
+<!-- ========== 2. THE PROBLEM ========== -->
+<section class="slide">
+    <div class="tag reveal d1">The problem</div><div class="pg">02</div>
+    <h2 class="reveal d2">The same job can be <span class="hl">fast</span>, <span class="bad">slow</span>, or <span class="bad">crash</span>. It depends on how you run it.</h2>
+    <div class="grid g3">
+        <div class="card stat reveal d3"><div class="n bad">15×</div><div class="l">slower: a matrix multiply in low precision on this CPU</div></div>
+        <div class="card stat reveal d4"><div class="n bad">381</div><div class="l">of 2,112 real runs crashed, gave a wrong answer, or had no such version</div></div>
+        <div class="card stat reveal d5"><div class="n ok">GPU</div><div class="l">wins big for some jobs, while 8 CPU workers win for others</div></div>
+    </div>
+    <p class="lead reveal d6" style="font-size:32px">Engineers tune this by hand, using rules of thumb and trial and error. That's slow, and the rules are often wrong.</p>
+</section>
+
+<!-- ========== 3. THE KNOBS ========== -->
+<section class="slide">
+    <div class="tag reveal d1">What can be changed</div><div class="pg">03</div>
+    <h2 class="reveal d2">Four knobs on every job</h2>
+    <div class="grid g4">
+        <div class="card reveal d3"><div class="k">Ranks</div><h3>Separate workers</h3><p>Split the job across independent processes, each with its own memory.</p><div class="chips"><span class="chip">1 → 8</span></div></div>
+        <div class="card reveal d4"><div class="k">Threads</div><h3>Helpers per worker</h3><p>Several CPU cores share one worker's memory.</p><div class="chips"><span class="chip">1 → 16</span></div></div>
+        <div class="card reveal d5"><div class="k">Device</div><h3>CPU or GPU</h3><p>The graphics card is fast for big, regular maths, but not for everything.</p><div class="chips"><span class="chip">CPU</span><span class="chip">GPU</span></div></div>
+        <div class="card reveal d6"><div class="k">Precision</div><h3>How exact</h3><p>Fewer digits (bf16) can be faster, or slower, or simply fail.</p><div class="chips"><span class="chip">fp32</span><span class="chip">bf16</span></div></div>
+    </div>
+    <p class="lead reveal d6" style="font-size:30px">44 possible setups per job. Trying them all is expensive, so the model has to guess well.</p>
+</section>
+
+<!-- ========== 4. THE IDEA ========== -->
+<section class="slide">
+    <div class="tag reveal d1">The idea</div><div class="pg">04</div>
+    <h2 class="reveal d2">Like a careful colleague: <span class="hl">one change at a time</span>, with a confidence score.</h2>
+    <div class="flow">
+        <div class="step reveal d3"><div class="num">01 · LOOK</div><h3>Read the job</h3><p>What it is, its size, this machine, and how the last run went.</p></div>
+        <div class="arrow reveal d3">→</div>
+        <div class="step reveal d4"><div class="num">02 · SUGGEST</div><h3>Pick one move</h3><p>"Add a worker", "move to GPU", "use bf16", or "stop, this is good".</p></div>
+        <div class="arrow reveal d4">→</div>
+        <div class="step reveal d5"><div class="num">03 · DECIDE</div><h3>Sure? Do it.</h3><p>If confident, it runs automatically. If not, it asks an engineer.</p></div>
+        <div class="arrow reveal d5">→</div>
+        <div class="step reveal d6"><div class="num">04 · CHECK</div><h3>Measure again</h3><p>If the move made it slower, undo it and try something else.</p></div>
+    </div>
+    <div class="note reveal d6">Same pattern as Jev: decide → confidence → auto-run or escalate</div>
+</section>
+
+<!-- ========== 5. REAL DATA ========== -->
+<section class="slide">
+    <div class="tag reveal d1">Real data only</div><div class="pg">05</div>
+    <h2 class="reveal d2">Nothing simulated. Every number was <span class="hl">measured on this laptop.</span></h2>
+    <div class="grid g3">
+        <div class="card stat reveal d3"><div class="n hl">8</div><div class="l">real workloads: 6 scientific kernels, a neural-network training step, and a backend server handling web requests</div></div>
+        <div class="card stat reveal d4"><div class="n hl">2,112</div><div class="l">real timed runs across every setup and problem size</div></div>
+        <div class="card stat reveal d5"><div class="n ok">✓</div><div class="l">every answer checked against a reference, and wrong answers are thrown out</div></div>
+    </div>
+    <div class="note reveal d6">Intel i5 · 10 cores / 16 threads · 24 GB · RTX 4050 Laptop GPU</div>
+</section>
+
+<!-- ========== BEYOND HPC KERNELS ========== -->
+<section class="slide">
+    <div class="tag reveal d1">Not just scientific code</div><div class="pg">06</div>
+    <h2 class="reveal d2">AI training and backend servers are <span class="hl">HPC work too.</span> It learned both.</h2>
+    <div class="grid g3">
+        <div class="card reveal d3"><div class="k">AI training step</div><h3>Forward + backward + gradient all-reduce</h3><p>bf16 on this CPU is 55× slower than fp32; on the GPU it is the best setup. Live: <b style="color:var(--teal)">2,139× faster in 3 runs</b>.</p></div>
+        <div class="card reveal d4"><div class="k">Backend server</div><h3>Parse, compute, compress, sign requests</h3><p>Threads don't help (Python's lock); worker processes do; there is no GPU path. Live: <b style="color:var(--teal)">5× faster in 4 runs</b>, never tried the GPU.</p></div>
+        <div class="card reveal d5"><div class="k">Your own task</div><h3>Drop in a plug-in</h3><p>One Python file in ~/.hpc_ds1/plugins, then hpc-ds1 setup measures it and the model learns it. Until then: escalated.</p></div>
+    </div>
+    <div class="note reveal d6" style="bottom:46px">Same 4 knobs, same model: ranks = worker processes, threads, CPU/GPU, precision · 2,112 real runs, 8 workloads</div>
+</section>
+
+<!-- ========== 6. PLUG IT INTO ANYTHING ========== -->
+<section class="slide">
+    <div class="tag reveal d1">The key difference</div><div class="pg">07</div>
+    <h2 class="reveal d2">A <span class="hl">plug-in</span>, not a product. Drop it into the tools you already use.</h2>
+    <div class="grid g3" style="margin-top:56px">
+        <div class="card reveal d3"><div class="k">In your Python code</div><h3>A library</h3><div class="code"><span class="a">import</span> hpc_ds1
+m = hpc_ds1.load()
+d = m.decide(state)
+<span class="a">if</span> d.mode == <span class="a">"auto"</span>:
+    apply(d.choice)
+<span class="a">else</span>:
+    ask_engineer(d.reasons)</div></div>
+        <div class="card reveal d4"><div class="k">In your scripts</div><h3>A command</h3><div class="code">pip install .
+hpc-ds1 setup
+hpc-ds1 tune --workload
+  stencil --size 160
+<span class="c"># installs, learns this
+# machine, tunes a job</span></div></div>
+        <div class="card reveal d5"><div class="k">In any language</div><h3>A web API</h3><div class="code">POST /v1/decide
+POST /v1/sessions
+POST /v1/fleet/tasks
+GET  /v1/audit
+<span class="c"># from a scheduler,
+# a dashboard, a script</span></div></div>
+    </div>
+    <p class="lead reveal d6" style="font-size:30px">Pure Python, three packages, no cluster or MPI. Runs wherever Python and PyTorch run, with or without a GPU.</p>
+</section>
+
+<!-- ========== 7. LEARNS YOUR MACHINE ========== -->
+<section class="slide">
+    <div class="tag reveal d1">Plug in, then it adapts</div><div class="pg">08</div>
+    <h2 class="reveal d2">Install it on <span class="hl">any computer</span>. It learns <span class="ok">that</span> computer.</h2>
+    <div class="flow">
+        <div class="step reveal d3"><div class="num">01 · INSTALL</div><h3>pip install .</h3><p>Three packages: torch, numpy, psutil. No cluster, no MPI. GPU optional.</p></div>
+        <div class="arrow reveal d3">→</div>
+        <div class="step reveal d4"><div class="num">02 · MEASURE</div><h3>hpc-ds1 setup</h3><p>Times the real workloads on this machine. ~1 hour, or ~30 min with --quick.</p></div>
+        <div class="arrow reveal d4">→</div>
+        <div class="step reveal d5"><div class="num">03 · LEARN</div><h3>Trains on your data</h3><p>About 5 minutes. Your CPU's and GPU's strengths and quirks, not someone else's.</p></div>
+        <div class="arrow reveal d5">→</div>
+        <div class="step reveal d6"><div class="num">04 · USE</div><h3>Tune any job</h3><p>From the console, the command line, or Python. It now trusts only this machine's data.</p></div>
+    </div>
+    <p class="lead reveal d6" style="font-size:30px">Rules of thumb are written once for "typical" hardware. HPC-DS1 learns the machine it's actually running on.</p>
+</section>
+
+<!-- ========== 7. HOW IT LEARNS ========== -->
+<section class="slide">
+    <div class="tag reveal d1">How it learns</div><div class="pg">09</div>
+    <h2 class="reveal d2">Measure everything, find the best path, learn the first step.</h2>
+    <div class="flow">
+        <div class="step reveal d3"><div class="num">MEASURE</div><h3>Run every setup</h3><p>Time all 44 setups for each job and size.</p></div>
+        <div class="arrow reveal d3">→</div>
+        <div class="step reveal d4"><div class="num">PLAN</div><h3>Find the best route</h3><p>From any starting point, the chain of moves that leads to the fastest setup.</p></div>
+        <div class="arrow reveal d4">→</div>
+        <div class="step reveal d5"><div class="num">TEACH</div><h3>"Do this next"</h3><p>Train the model to choose the first good move, looking several steps ahead.</p></div>
+        <div class="arrow reveal d5">→</div>
+        <div class="step reveal d6"><div class="num">TEST</div><h3>On unseen sizes</h3><p>Graded only on problem sizes it never trained on.</p></div>
+    </div>
+    <div class="note reveal d6">Small neural network: 2.85M parameters · trains in ~30 s on the laptop GPU</div>
+</section>
+
+<!-- ========== 7. CONFIDENCE ========== -->
+<section class="slide">
+    <div class="tag reveal d1">Knowing when to ask</div><div class="pg">10</div>
+    <h2 class="reveal d2">Three answers, like Jev: <span class="ok">run it</span>, <span class="hl">check it</span>, or <span class="bad">hand it over.</span></h2>
+    <div class="gauge reveal d3">
+        <div class="strip">
+            <div class="esc" style="width:7%;border-radius:16px 0 0 16px">7%</div>
+            <div class="esc" style="width:35%;border-radius:0;background:rgba(255,181,71,0.16);border-color:rgba(255,181,71,0.55)">35% → engineer confirms</div>
+            <div class="auto" style="width:58%">58% → runs automatically</div>
+        </div>
+        <div class="labels"><span>escalate · below 0.5 or unfamiliar</span><span>confirm · 0.5–0.85</span><span>auto · 0.85 and above</span></div>
+    </div>
+    <div class="grid g2" style="max-width:1640px">
+        <div class="card stat reveal d4"><div class="n ok">95%</div><div class="l">of the automatic decisions were a best move</div></div>
+        <div class="card stat reveal d5"><div class="n hl">0.141</div><div class="l">calibration error: how far confidence is from reality. Target 0.12, missed once AI and server jobs were added</div></div>
+    </div>
+</section>
+
+<!-- ========== 8. RESULTS: TUNING ========== -->
+<section class="slide">
+    <div class="tag reveal d1">Results · tuning a whole job</div><div class="pg">11</div>
+    <h2 class="reveal d2">Close to the best possible, with very few test runs.</h2>
+    <div class="bars">
+        <div class="bar me reveal d3"><span><b>HPC-DS1</b></span><div class="track"><div class="fill" style="--w:93.9%"></div></div><span class="v hl">93.9%<small>2.7 runs</small></span></div>
+        <div class="bar reveal d4"><span>Try every neighbour</span><div class="track"><div class="fill" style="--w:94.8%"></div></div><span class="v">94.8%<small>10.7 runs</small></span></div>
+        <div class="bar reveal d5"><span>Rules of thumb</span><div class="track"><div class="fill" style="--w:90.1%"></div></div><span class="v">90.1%<small>2.4 runs</small></span></div>
+        <div class="bar reveal d6"><span>Random moves</span><div class="track"><div class="fill" style="--w:82.3%"></div></div><span class="v">82.3%<small>8.4 runs</small></span></div>
+    </div>
+    <div class="note reveal d6">% of the best setup's speed reached, on unseen problem sizes · "runs" = real test runs per session</div>
+</section>
+
+<!-- ========== 9. RESULTS: SAFETY ========== -->
+<section class="slide">
+    <div class="tag reveal d1">Results · single decisions</div><div class="pg">12</div>
+    <h2 class="reveal d2">Better choices, and it <span class="ok">never made things worse.</span></h2>
+    <table class="reveal d3">
+        <tr><th></th><th>HPC-DS1</th><th>Rules of thumb</th></tr>
+        <tr><td>Picks a best move</td><td class="num hl">92.3%</td><td class="num">70.3%</td></tr>
+        <tr><td>Made the job slower</td><td class="num ok">0%</td><td class="num bad">5.6%</td></tr>
+        <tr><td>Picked a setup that crashes</td><td class="num ok">0%</td><td class="num bad">7.7%</td></tr>
+    </table>
+    <p class="lead reveal d4" style="font-size:30px">Live, on all 8 workloads: every session ended within 0.5% of the best known setup or beat it, in 3 to 6 real runs.</p>
+</section>
+
+<!-- ========== DIFFERENTIATOR: MATRIX ========== -->
+<section class="slide">
+    <div class="tag reveal d1">How it stands apart</div><div class="pg">13</div>
+    <h2 class="reveal d2" style="font-size:64px">Others <span class="muted" style="color:var(--muted)">measure</span>, <span style="color:var(--muted)">predict</span> or <span style="color:var(--muted)">speed up one app</span>. HPC-DS1 does the <span class="hl">whole job.</span></h2>
+    <table class="matrix reveal d3">
+        <tr><th></th><th class="me">HPC-DS1</th><th>Performance<br>analysis</th><th>Parallelism<br>predictors</th><th>Scheduling /<br>power tuning</th><th>Single-app<br>acceleration</th></tr>
+        <tr><td>Makes the decision, not just a report</td><td class="me y">✓</td><td class="x">✗</td><td class="y">✓</td><td class="y">✓</td><td class="x">✗</td></tr><tr><td>Says how sure it is, asks a human if unsure</td><td class="me y">✓</td><td class="x">✗</td><td class="x">✗</td><td class="x">✗</td><td class="x">✗</td></tr><tr><td>Tries the change live, undoes it if slower</td><td class="me y">✓</td><td class="x">✗</td><td class="x">✗</td><td class="p">partial</td><td class="x">✗</td></tr><tr><td>Works across many kinds of workload</td><td class="me y">✓</td><td class="p">compares</td><td class="x">✗</td><td class="y">✓</td><td class="x">✗</td></tr><tr><td>Learns the exact machine it runs on</td><td class="me y">✓</td><td class="x">✗</td><td class="x">✗</td><td class="p">partial</td><td class="p">partial</td></tr><tr><td>Trained only on real, answer-checked runs</td><td class="me y">✓</td><td class="y">✓</td><td class="x">✗</td><td class="x">✗</td><td class="x">✗</td></tr><tr><td>Sends each task to the best machine on the network</td><td class="me y">✓</td><td class="x">✗</td><td class="x">✗</td><td class="y">✓</td><td class="x">✗</td></tr><tr><td>Approval queue and audit log for engineers</td><td class="me y">✓</td><td class="x">✗</td><td class="x">✗</td><td class="x">✗</td><td class="x">✗</td></tr><tr><td>Plugs into any tool: Python, CLI, web API</td><td class="me y">✓</td><td class="x">✗</td><td class="x">✗</td><td class="x">✗</td><td class="x">✗</td></tr>
+    </table>
+    <div class="note reveal d4" style="bottom:30px">Typical scope of each approach, judged from comparable project titles. Not a claim about any one team's final work.</div>
+</section>
+
+<!-- ========== DIFFERENTIATOR: ONLY HPC-DS1 ========== -->
+<section class="slide">
+    <div class="tag reveal d1">The complete package</div><div class="pg">14</div>
+    <h2 class="reveal d2">Five things that, together, <span class="hl">only HPC-DS1</span> does.</h2>
+    <div class="only">
+        <div class="i reveal d2">01</div><div class="t reveal d2">Decides, acts, checks <span>· runs each change for real, undoes anything slower</span></div>
+        <div class="i reveal d3">02</div><div class="t reveal d3">Knows when it doesn't know <span>· 3 tiers + familiarity guard: 240 → 0 wrong auto-moves</span></div>
+        <div class="i reveal d4">03</div><div class="t reveal d4">Learns your machine <span>· pip install, hpc-ds1 setup, and it adapts to that hardware</span></div>
+        <div class="i reveal d5">04</div><div class="t reveal d5">Runs a whole facility <span>· places tasks across machines, one approval queue, full audit</span></div>
+        <div class="i reveal d6">05</div><div class="t reveal d6">Drops into any tool <span>· console, Python library, command line, or web API</span></div>
+    </div>
+    <div class="note reveal d6">Backed by measured results: 93.9% of best speed · 0% slower moves · 0% crashing picks</div>
+</section>
+
+<!-- ========== GUARD: KNOWS WHEN IT DOESN'T KNOW ========== -->
+<section class="slide">
+    <div class="tag reveal d1">Knows when it doesn't know</div><div class="pg">15</div>
+    <h2 class="reveal d2">On a job it has never seen, it no longer <span class="bad">guesses</span>. It <span class="ok">asks.</span></h2>
+    <div class="grid g3">
+        <div class="card stat reveal d3"><div class="n" style="font-size:104px;white-space:nowrap"><span class="bad">240</span> → <span class="ok">0</span></div><div class="l">confidently wrong automatic moves on never-seen workloads</div></div>
+        <div class="card stat reveal d4"><div class="n ok">100%</div><div class="l">of never-seen-workload decisions sent to an engineer, with the reason</div></div>
+        <div class="card stat reveal d5"><div class="n hl">0</div><div class="l">of 286 familiar test decisions flagged: automation on known work is untouched</div></div>
+    </div>
+    <p class="lead reveal d6" style="font-size:30px">A familiarity guard checks the machine, the workload, the problem size, and how close the job is to anything it measured. Unfamiliar means escalate, however confident the network is. (Held out of training, server work was decided right only 18% of the time.)</p>
+</section>
+
+<!-- ========== FACILITY: FLEET ========== -->
+<section class="slide">
+    <div class="tag reveal d1">Built for a computing facility</div><div class="pg">16</div>
+    <h2 class="reveal d2">Connect machines over the network. The model decides <span class="hl">where each task runs.</span></h2>
+    <div class="flow">
+        <div class="step reveal d3"><div class="num">01 · CONNECT</div><h3>One command</h3><p>hpc-ds1 agent --server … on any machine. No cables, shared disk or MPI.</p></div>
+        <div class="arrow reveal d3">→</div>
+        <div class="step reveal d4"><div class="num">02 · PLACE</div><h3>Earliest finish</h3><p>Each machine's own measurements + its queue. The reason is kept on the task.</p></div>
+        <div class="arrow reveal d4">→</div>
+        <div class="step reveal d5"><div class="num">03 · TUNE</div><h3>That machine's model</h3><p>Tunes the job on the hardware it runs on, every step measured for real.</p></div>
+        <div class="arrow reveal d5">→</div>
+        <div class="step reveal d6"><div class="num">04 · OVERSEE</div><h3>Approve and audit</h3><p>Unsure moves wait in one approval queue. Every decision is logged with who approved it.</p></div>
+    </div>
+    <div class="note reveal d6">Tested end to end: a fleet task tuned 39× faster in 6 real runs; an unfamiliar task waited for approval and stopped cleanly when rejected</div>
+</section>
+
+<!-- ========== 11. LIVE DEMO ========== -->
+<section class="slide">
+    <div class="tag reveal d1">Live demo</div><div class="pg">17</div>
+    <h1 class="reveal d2" style="font-size:130px">Let's run it<br><span class="hl">for real.</span></h1>
+    <div class="chips reveal d3" style="margin-top:60px">
+        <span class="chip">1 · playground: ask like Jev</span>
+        <span class="chip">2 · an unfamiliar job gets escalated</span>
+        <span class="chip">3 · connect a device, submit a task</span>
+        <span class="chip">4 · approve it in the queue</span>
+        <span class="chip">5 · audit log + evaluation</span>
+    </div>
+    <div class="note reveal d4">http://127.0.0.1:8765</div>
+</section>
+
+<!-- ========== 12. CLOSE ========== -->
+<section class="slide">
+    <div class="tag reveal d1">In one line</div><div class="pg">18</div>
+    <h2 class="reveal d2" style="font-size:76px">From one laptop to a whole facility: tunes real jobs to <span class="hl">~94% of their best speed</span> in about 3 runs, never makes them slower, and <span class="ok">asks a human when it's unsure.</span></h2>
+    <p class="lead reveal d3" style="font-size:32px">Install · learn each machine · place every task · tune it · ask when unsure · log everything</p>
+    <div class="note reveal d4">Questions?</div>
+</section>
+
+</main>
+</div>
+
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   Keyboard, wheel, touch navigation + stage scaling
+   =========================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides = document.querySelectorAll('.slide');
+        this.stage = document.getElementById('deckStage');
+        this.progress = document.getElementById('progress');
+        this.current = 0;
+        this.lock = false;
+        this.scale();
+        window.addEventListener('resize', () => this.scale());
+        document.addEventListener('keydown', e => {
+            if (e.target.isContentEditable) return;
+            if (['ArrowRight', 'ArrowDown', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); this.go(this.current + 1); }
+            if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); this.go(this.current - 1); }
+            if (e.key === 'Home') this.go(0);
+            if (e.key === 'End') this.go(this.slides.length - 1);
+        });
+        window.addEventListener('wheel', e => {
+            if (this.lock || Math.abs(e.deltaY) < 20) return;
+            this.lock = true; setTimeout(() => this.lock = false, 700);
+            this.go(this.current + (e.deltaY > 0 ? 1 : -1));
+        }, { passive: true });
+        let x0 = null;
+        window.addEventListener('touchstart', e => x0 = e.touches[0].clientX, { passive: true });
+        window.addEventListener('touchend', e => {
+            if (x0 === null) return;
+            const dx = e.changedTouches[0].clientX - x0;
+            if (Math.abs(dx) > 50) this.go(this.current + (dx < 0 ? 1 : -1));
+            x0 = null;
+        });
+        this.go(0);
+    }
+    scale() {
+        const f = Math.min(innerWidth / 1920, innerHeight / 1080);
+        this.stage.style.transform = `translate(${(innerWidth - 1920 * f) / 2}px, ${(innerHeight - 1080 * f) / 2}px) scale(${f})`;
+    }
+    go(i) {
+        this.current = Math.max(0, Math.min(i, this.slides.length - 1));
+        this.slides.forEach((s, k) => {
+            s.classList.toggle('active', k === this.current);
+            s.classList.toggle('visible', k === this.current);
+        });
+        this.progress.style.width = ((this.current + 1) / this.slides.length * 100) + '%';
+    }
+}
+new SlidePresentation();
+
+/* ===========================================
+   INLINE EDITING — press E or hover top-left; Ctrl+S saves the file
+   =========================================== */
+const editor = {
+    isActive: false,
+    key: 'hpcds1-deck-edits',
+    els() { return document.querySelectorAll('.slide h1, .slide h2, .slide h3, .slide p, .slide .tag, .slide .l, .slide .n, .slide td, .slide .chip, .slide .note'); },
+    toggleEditMode() {
+        this.isActive = !this.isActive;
+        this.els().forEach(el => el.setAttribute('contenteditable', this.isActive));
+        document.getElementById('editToggle').classList.toggle('active', this.isActive);
+        if (!this.isActive) this.store();
+    },
+    store() {
+        try { localStorage.setItem(this.key, JSON.stringify([...this.els()].map(e => e.innerHTML))); } catch (e) {}
+    },
+    restore() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(this.key) || 'null');
+            const els = this.els();
+            if (saved && saved.length === els.length) els.forEach((e, i) => e.innerHTML = saved[i]);
+        } catch (e) {}
+    },
+    download() {
+        this.els().forEach(el => el.removeAttribute('contenteditable'));
+        const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+        a.download = 'hpc-ds1-review.html'; a.click();
+        if (this.isActive) this.els().forEach(el => el.setAttribute('contenteditable', true));
+    }
+};
+editor.restore();
+const editToggle = document.getElementById('editToggle');
+const hotzone = document.querySelector('.edit-hotzone');
+let hideTimeout = null;
+editToggle.addEventListener('click', () => editor.toggleEditMode());
+hotzone.addEventListener('click', () => editor.toggleEditMode());
+hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+editToggle.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+editToggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+document.addEventListener('keydown', e => {
+    if ((e.key === 'e' || e.key === 'E') && !e.target.isContentEditable) editor.toggleEditMode();
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); editor.store(); editor.download(); }
+});
+document.addEventListener('input', () => editor.store());
+</script>
+</body>
+</html>
