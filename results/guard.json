@@ -1,0 +1,91 @@
+{
+  "radius": 1.041248789583442,
+  "quantile": 0.99,
+  "held_out_sizes": {
+    "test_states": 286,
+    "flagged": 0,
+    "flag_reasons": [],
+    "without_guard": {
+      "auto": 0.5804,
+      "confirm": 0.3497,
+      "escalate": 0.0699,
+      "auto_accuracy": 0.9518,
+      "wrong_auto_runs": 8,
+      "decisions": 286
+    },
+    "with_guard": {
+      "auto": 0.5804,
+      "confirm": 0.3497,
+      "escalate": 0.0699,
+      "auto_accuracy": 0.9518,
+      "wrong_auto_runs": 8,
+      "decisions": 286
+    }
+  },
+  "unseen_kernels": [
+    {
+      "held_out": "gemm",
+      "states": 264,
+      "flagged_pct": 100.0,
+      "flagged_by_distance_only_pct": 21.6,
+      "confident_wrong_before": 66,
+      "confident_wrong_after": 0
+    },
+    {
+      "held_out": "fft",
+      "states": 147,
+      "flagged_pct": 100.0,
+      "flagged_by_distance_only_pct": 100.0,
+      "confident_wrong_before": 26,
+      "confident_wrong_after": 0
+    },
+    {
+      "held_out": "stencil",
+      "states": 264,
+      "flagged_pct": 100.0,
+      "flagged_by_distance_only_pct": 73.9,
+      "confident_wrong_before": 37,
+      "confident_wrong_after": 0
+    },
+    {
+      "held_out": "spmv",
+      "states": 162,
+      "flagged_pct": 100.0,
+      "flagged_by_distance_only_pct": 77.2,
+      "confident_wrong_before": 9,
+      "confident_wrong_after": 0
+    },
+    {
+      "held_out": "nbody",
+      "states": 264,
+      "flagged_pct": 100.0,
+      "flagged_by_distance_only_pct": 61.7,
+      "confident_wrong_before": 11,
+      "confident_wrong_after": 0
+    },
+    {
+      "held_out": "montecarlo",
+      "states": 264,
+      "flagged_pct": 100.0,
+      "flagged_by_distance_only_pct": 82.2,
+      "confident_wrong_before": 25,
+      "confident_wrong_after": 0
+    },
+    {
+      "held_out": "mltrain",
+      "states": 264,
+      "flagged_pct": 100.0,
+      "flagged_by_distance_only_pct": 20.1,
+      "confident_wrong_before": 7,
+      "confident_wrong_after": 0
+    },
+    {
+      "held_out": "server",
+      "states": 102,
+      "flagged_pct": 100.0,
+      "flagged_by_distance_only_pct": 51.0,
+      "confident_wrong_before": 59,
+      "confident_wrong_after": 0
+    }
+  ]
+}

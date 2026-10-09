@@ -1,0 +1,1386 @@
+{
+  "model": {
+    "name": "HPC-DS1",
+    "version": "1.0",
+    "size": "medium",
+    "parameters": 2847243,
+    "hparams": {
+      "dim": 256,
+      "encoder_blocks": 2,
+      "fusion_layers": 2,
+      "heads": 8,
+      "ffn_dim": 1024,
+      "dropout": 0.15,
+      "workloads": [
+        "gemm",
+        "fft",
+        "stencil",
+        "spmv",
+        "nbody",
+        "montecarlo",
+        "mltrain",
+        "server"
+      ]
+    },
+    "temperature": 0.2522,
+    "device": "cuda",
+    "trained_at": "2026-10-08T17:29:04+00:00",
+    "train_time_sec": 27.0
+  },
+  "hardware": {
+    "name": "LAPTOP-PJUEH9UD",
+    "cpu_model": "Intel64 Family 6 Model 191 Stepping 2, GenuineIntel",
+    "cpu_cores": 10,
+    "cpu_threads": 16,
+    "cpu_freq_ghz": 2.4,
+    "ram_gb": 23.7,
+    "gpu_model": "NVIDIA GeForce RTX 4050 Laptop GPU",
+    "gpu_memory_gb": 6.0
+  },
+  "dataset": {
+    "measurements": 2112,
+    "ok_and_correct": 1731,
+    "failed_or_wrong": 381,
+    "failures": [
+      {
+        "problem": "fft:64",
+        "config": {
+          "ranks": 1,
+          "threads": 1,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: RuntimeError: MKL FFT doesn't support tensors of type: Half"
+      },
+      {
+        "problem": "fft:64",
+        "config": {
+          "ranks": 1,
+          "threads": 2,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: RuntimeError: MKL FFT doesn't support tensors of type: Half"
+      },
+      {
+        "problem": "fft:64",
+        "config": {
+          "ranks": 1,
+          "threads": 4,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: RuntimeError: MKL FFT doesn't support tensors of type: Half"
+      },
+      {
+        "problem": "fft:128",
+        "config": {
+          "ranks": 1,
+          "threads": 1,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: RuntimeError: MKL FFT doesn't support tensors of type: Half"
+      },
+      {
+        "problem": "fft:128",
+        "config": {
+          "ranks": 1,
+          "threads": 2,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: RuntimeError: MKL FFT doesn't support tensors of type: Half"
+      },
+      {
+        "problem": "fft:128",
+        "config": {
+          "ranks": 1,
+          "threads": 4,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: RuntimeError: MKL FFT doesn't support tensors of type: Half"
+      },
+      {
+        "problem": "fft:192",
+        "config": {
+          "ranks": 1,
+          "threads": 1,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: RuntimeError: MKL FFT doesn't support tensors of type: Half"
+      },
+      {
+        "problem": "fft:192",
+        "config": {
+          "ranks": 1,
+          "threads": 2,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: RuntimeError: MKL FFT doesn't support tensors of type: Half"
+      },
+      {
+        "problem": "fft:192",
+        "config": {
+          "ranks": 1,
+          "threads": 4,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: RuntimeError: MKL FFT doesn't support tensors of type: Half"
+      },
+      {
+        "problem": "fft:256",
+        "config": {
+          "ranks": 1,
+          "threads": 1,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: RuntimeError: MKL FFT doesn't support tensors of type: Half"
+      },
+      {
+        "problem": "fft:256",
+        "config": {
+          "ranks": 1,
+          "threads": 2,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: RuntimeError: MKL FFT doesn't support tensors of type: Half"
+      },
+      {
+        "problem": "fft:256",
+        "config": {
+          "ranks": 1,
+          "threads": 4,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: RuntimeError: MKL FFT doesn't support tensors of type: Half"
+      },
+      {
+        "problem": "spmv:200000",
+        "config": {
+          "ranks": 1,
+          "threads": 1,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: NotImplementedError: \"addmv_out_sparse_csr_impl_mkl\" not implemented for 'BFloat16'"
+      },
+      {
+        "problem": "spmv:200000",
+        "config": {
+          "ranks": 1,
+          "threads": 2,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: NotImplementedError: \"addmv_out_sparse_csr_impl_mkl\" not implemented for 'BFloat16'"
+      },
+      {
+        "problem": "spmv:200000",
+        "config": {
+          "ranks": 1,
+          "threads": 4,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: NotImplementedError: \"addmv_out_sparse_csr_impl_mkl\" not implemented for 'BFloat16'"
+      },
+      {
+        "problem": "spmv:400000",
+        "config": {
+          "ranks": 1,
+          "threads": 1,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: NotImplementedError: \"addmv_out_sparse_csr_impl_mkl\" not implemented for 'BFloat16'"
+      },
+      {
+        "problem": "spmv:400000",
+        "config": {
+          "ranks": 1,
+          "threads": 2,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: NotImplementedError: \"addmv_out_sparse_csr_impl_mkl\" not implemented for 'BFloat16'"
+      },
+      {
+        "problem": "spmv:400000",
+        "config": {
+          "ranks": 1,
+          "threads": 4,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: NotImplementedError: \"addmv_out_sparse_csr_impl_mkl\" not implemented for 'BFloat16'"
+      },
+      {
+        "problem": "spmv:800000",
+        "config": {
+          "ranks": 1,
+          "threads": 1,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: NotImplementedError: \"addmv_out_sparse_csr_impl_mkl\" not implemented for 'BFloat16'"
+      },
+      {
+        "problem": "spmv:800000",
+        "config": {
+          "ranks": 1,
+          "threads": 2,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: NotImplementedError: \"addmv_out_sparse_csr_impl_mkl\" not implemented for 'BFloat16'"
+      },
+      {
+        "problem": "spmv:800000",
+        "config": {
+          "ranks": 1,
+          "threads": 4,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: NotImplementedError: \"addmv_out_sparse_csr_impl_mkl\" not implemented for 'BFloat16'"
+      },
+      {
+        "problem": "spmv:1600000",
+        "config": {
+          "ranks": 1,
+          "threads": 1,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: NotImplementedError: \"addmv_out_sparse_csr_impl_mkl\" not implemented for 'BFloat16'"
+      },
+      {
+        "problem": "spmv:1600000",
+        "config": {
+          "ranks": 1,
+          "threads": 2,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: NotImplementedError: \"addmv_out_sparse_csr_impl_mkl\" not implemented for 'BFloat16'"
+      },
+      {
+        "problem": "spmv:1600000",
+        "config": {
+          "ranks": 1,
+          "threads": 4,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "reason": "RuntimeError: NotImplementedError: \"addmv_out_sparse_csr_impl_mkl\" not implemented for 'BFloat16'"
+      }
+    ],
+    "states": 1731,
+    "train": 1229,
+    "val": 216,
+    "test": 286,
+    "label_distribution": {
+      "USE_GPU": 672,
+      "STOP_TUNING": 373,
+      "ADD_THREADS": 229,
+      "ADD_RANKS": 204,
+      "USE_BF16": 117,
+      "USE_FP32": 89,
+      "REMOVE_RANKS": 26,
+      "REMOVE_THREADS": 20,
+      "USE_CPU": 1
+    }
+  },
+  "size_sweep": [
+    {
+      "size": "tiny",
+      "hparams": {
+        "dim": 64,
+        "encoder_blocks": 1,
+        "fusion_layers": 1,
+        "heads": 4,
+        "ffn_dim": 256,
+        "dropout": 0.1
+      },
+      "parameters": 99659,
+      "best_epoch": 68,
+      "epochs_run": 108,
+      "val_loss": 0.88782,
+      "val_acc": 0.95833,
+      "train_time_sec": 20.2,
+      "test_acc": 0.9266
+    },
+    {
+      "size": "small",
+      "hparams": {
+        "dim": 128,
+        "encoder_blocks": 1,
+        "fusion_layers": 2,
+        "heads": 4,
+        "ffn_dim": 512,
+        "dropout": 0.1
+      },
+      "parameters": 585995,
+      "best_epoch": 42,
+      "epochs_run": 82,
+      "val_loss": 0.8974,
+      "val_acc": 0.9537,
+      "train_time_sec": 18.1,
+      "test_acc": 0.9371
+    },
+    {
+      "size": "medium",
+      "hparams": {
+        "dim": 256,
+        "encoder_blocks": 2,
+        "fusion_layers": 2,
+        "heads": 8,
+        "ffn_dim": 1024,
+        "dropout": 0.15
+      },
+      "parameters": 2847243,
+      "best_epoch": 59,
+      "epochs_run": 99,
+      "val_loss": 0.88769,
+      "val_acc": 0.9537,
+      "train_time_sec": 27.0,
+      "test_acc": 0.9231
+    }
+  ],
+  "metrics": {
+    "test_states": 286,
+    "test_problems": [
+      "fft:192",
+      "gemm:2048",
+      "mltrain:4096",
+      "montecarlo:8000000",
+      "nbody:4096",
+      "server:4000",
+      "spmv:800000",
+      "stencil:160"
+    ],
+    "accuracy": 0.9231,
+    "exact_label_accuracy": 0.6608,
+    "accuracy_definition": "chosen move can reach within 2% of the best runtime reachable from this state",
+    "rules_accuracy": 0.7028,
+    "majority_class": "USE_GPU",
+    "majority_accuracy": 0.5105,
+    "temperature": 0.2522,
+    "ece_raw": 0.3188,
+    "ece": 0.1413,
+    "reliability": [
+      {
+        "lo": 0.2,
+        "hi": 0.3,
+        "count": 1,
+        "accuracy": 0.0,
+        "confidence": 0.2791
+      },
+      {
+        "lo": 0.3,
+        "hi": 0.4,
+        "count": 7,
+        "accuracy": 0.8571,
+        "confidence": 0.36
+      },
+      {
+        "lo": 0.4,
+        "hi": 0.5,
+        "count": 12,
+        "accuracy": 1.0,
+        "confidence": 0.4648
+      },
+      {
+        "lo": 0.5,
+        "hi": 0.6,
+        "count": 40,
+        "accuracy": 0.9,
+        "confidence": 0.5569
+      },
+      {
+        "lo": 0.6,
+        "hi": 0.7,
+        "count": 29,
+        "accuracy": 0.9655,
+        "confidence": 0.6479
+      },
+      {
+        "lo": 0.7,
+        "hi": 0.8,
+        "count": 17,
+        "accuracy": 0.8824,
+        "confidence": 0.7414
+      },
+      {
+        "lo": 0.8,
+        "hi": 0.9,
+        "count": 26,
+        "accuracy": 0.7308,
+        "confidence": 0.8543
+      },
+      {
+        "lo": 0.9,
+        "hi": 1.0,
+        "count": 154,
+        "accuracy": 0.961,
+        "confidence": 0.972
+      }
+    ],
+    "escalation_curve": [
+      {
+        "threshold": 0.0,
+        "coverage": 1.0,
+        "auto_accuracy": 0.9231,
+        "auto_regret_pct": 0.94
+      },
+      {
+        "threshold": 0.3,
+        "coverage": 0.9965,
+        "auto_accuracy": 0.9263,
+        "auto_regret_pct": 0.94
+      },
+      {
+        "threshold": 0.5,
+        "coverage": 0.9301,
+        "auto_accuracy": 0.9248,
+        "auto_regret_pct": 0.98
+      },
+      {
+        "threshold": 0.6,
+        "coverage": 0.7902,
+        "auto_accuracy": 0.9292,
+        "auto_regret_pct": 0.99
+      },
+      {
+        "threshold": 0.7,
+        "coverage": 0.6888,
+        "auto_accuracy": 0.9239,
+        "auto_regret_pct": 1.1
+      },
+      {
+        "threshold": 0.8,
+        "coverage": 0.6294,
+        "auto_accuracy": 0.9278,
+        "auto_regret_pct": 1.14
+      },
+      {
+        "threshold": 0.85,
+        "coverage": 0.5804,
+        "auto_accuracy": 0.9518,
+        "auto_regret_pct": 0.87
+      },
+      {
+        "threshold": 0.9,
+        "coverage": 0.5385,
+        "auto_accuracy": 0.961,
+        "auto_regret_pct": 0.78
+      },
+      {
+        "threshold": 0.95,
+        "coverage": 0.3706,
+        "auto_accuracy": 0.9717,
+        "auto_regret_pct": 0.73
+      },
+      {
+        "threshold": 0.99,
+        "coverage": 0.2867,
+        "auto_accuracy": 1.0,
+        "auto_regret_pct": -0.08
+      }
+    ],
+    "per_workload": {
+      "fft": {
+        "correct": 22,
+        "total": 22,
+        "accuracy": 1.0
+      },
+      "gemm": {
+        "correct": 40,
+        "total": 44,
+        "accuracy": 0.9091
+      },
+      "mltrain": {
+        "correct": 40,
+        "total": 44,
+        "accuracy": 0.9091
+      },
+      "montecarlo": {
+        "correct": 39,
+        "total": 44,
+        "accuracy": 0.8864
+      },
+      "nbody": {
+        "correct": 40,
+        "total": 44,
+        "accuracy": 0.9091
+      },
+      "server": {
+        "correct": 16,
+        "total": 17,
+        "accuracy": 0.9412
+      },
+      "spmv": {
+        "correct": 25,
+        "total": 27,
+        "accuracy": 0.9259
+      },
+      "stencil": {
+        "correct": 42,
+        "total": 44,
+        "accuracy": 0.9545
+      }
+    },
+    "confusion": [
+      [
+        23,
+        0,
+        8,
+        1,
+        1,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        1,
+        1,
+        0,
+        2,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        18,
+        0,
+        24,
+        0,
+        2,
+        3,
+        1
+      ],
+      [
+        1,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        3,
+        4,
+        5,
+        0,
+        65,
+        0,
+        5,
+        12,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        22,
+        0,
+        0
+      ],
+      [
+        8,
+        0,
+        3,
+        0,
+        4,
+        0,
+        0,
+        9,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        49
+      ]
+    ],
+    "regret_model": {
+      "mean_regret_pct": 0.94,
+      "worst_regret_x": 1.97,
+      "median_regret_pct": 0.0,
+      "within_5pct_of_best_pct": 96.2,
+      "made_slower_pct": 0.0,
+      "picked_failing_config_pct": 0.0
+    },
+    "regret_rules": {
+      "mean_regret_pct": 8.36,
+      "worst_regret_x": 6.51,
+      "median_regret_pct": 0.0,
+      "within_5pct_of_best_pct": 79.4,
+      "made_slower_pct": 5.6,
+      "picked_failing_config_pct": 7.7
+    },
+    "stop_head_accuracy": 0.986,
+    "improvement_mae": 0.0352
+  },
+  "replay": {
+    "summary": [
+      {
+        "policy": "HPC-DS1 (autonomous)",
+        "sessions": 286,
+        "geo_mean_speedup": 13.301,
+        "pct_of_best_config": 93.9,
+        "sessions_within_10pct_of_best": 81.1,
+        "mean_experiments": 2.72
+      },
+      {
+        "policy": "Rules of thumb",
+        "sessions": 286,
+        "geo_mean_speedup": 12.761,
+        "pct_of_best_config": 90.1,
+        "sessions_within_10pct_of_best": 67.1,
+        "mean_experiments": 2.44
+      },
+      {
+        "policy": "Random moves (8)",
+        "sessions": 286,
+        "geo_mean_speedup": 11.654,
+        "pct_of_best_config": 82.3,
+        "sessions_within_10pct_of_best": 75.9,
+        "mean_experiments": 8.37
+      },
+      {
+        "policy": "Greedy search (tries all neighbours)",
+        "sessions": 286,
+        "geo_mean_speedup": 13.423,
+        "pct_of_best_config": 94.8,
+        "sessions_within_10pct_of_best": 86.7,
+        "mean_experiments": 10.74
+      }
+    ],
+    "per_problem": [
+      {
+        "workload": "fft",
+        "size": 192,
+        "starts": 22,
+        "HPC-DS1 (autonomous)": 99.6,
+        "Rules of thumb": 93.0,
+        "Random moves (8)": 89.4,
+        "Greedy search (tries all neighbours)": 98.8
+      },
+      {
+        "workload": "gemm",
+        "size": 2048,
+        "starts": 44,
+        "HPC-DS1 (autonomous)": 96.9,
+        "Rules of thumb": 96.3,
+        "Random moves (8)": 88.3,
+        "Greedy search (tries all neighbours)": 97.9
+      },
+      {
+        "workload": "mltrain",
+        "size": 4096,
+        "starts": 44,
+        "HPC-DS1 (autonomous)": 95.0,
+        "Rules of thumb": 95.0,
+        "Random moves (8)": 73.5,
+        "Greedy search (tries all neighbours)": 99.5
+      },
+      {
+        "workload": "montecarlo",
+        "size": 8000000,
+        "starts": 44,
+        "HPC-DS1 (autonomous)": 88.5,
+        "Rules of thumb": 80.1,
+        "Random moves (8)": 84.9,
+        "Greedy search (tries all neighbours)": 84.0
+      },
+      {
+        "workload": "nbody",
+        "size": 4096,
+        "starts": 44,
+        "HPC-DS1 (autonomous)": 97.9,
+        "Rules of thumb": 94.8,
+        "Random moves (8)": 87.8,
+        "Greedy search (tries all neighbours)": 98.6
+      },
+      {
+        "workload": "server",
+        "size": 4000,
+        "starts": 17,
+        "HPC-DS1 (autonomous)": 71.0,
+        "Rules of thumb": 56.6,
+        "Random moves (8)": 67.0,
+        "Greedy search (tries all neighbours)": 75.2
+      },
+      {
+        "workload": "spmv",
+        "size": 800000,
+        "starts": 27,
+        "HPC-DS1 (autonomous)": 98.7,
+        "Rules of thumb": 98.5,
+        "Random moves (8)": 98.4,
+        "Greedy search (tries all neighbours)": 98.5
+      },
+      {
+        "workload": "stencil",
+        "size": 160,
+        "starts": 44,
+        "HPC-DS1 (autonomous)": 96.0,
+        "Rules of thumb": 95.3,
+        "Random moves (8)": 72.5,
+        "Greedy search (tries all neighbours)": 99.1
+      }
+    ],
+    "max_steps": 8
+  },
+  "live": [
+    {
+      "workload": "fft",
+      "size": 192,
+      "initial_config": {
+        "ranks": 4,
+        "threads": 1,
+        "gpu": false,
+        "precision": "fp32"
+      },
+      "final_config": {
+        "ranks": 1,
+        "threads": 2,
+        "gpu": true,
+        "precision": "fp32"
+      },
+      "initial_runtime": 0.073684,
+      "final_runtime": 0.007907,
+      "experiments": 6,
+      "escalations": 0,
+      "stopped_reason": "model_stop",
+      "steps": [
+        {
+          "step": 0,
+          "action": "ADD_THREADS",
+          "confidence": 0.99905,
+          "escalated": false,
+          "runtime_before": 0.073684,
+          "runtime_after": 0.059628,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 1,
+          "action": "USE_GPU",
+          "confidence": 0.96991,
+          "escalated": false,
+          "runtime_before": 0.059628,
+          "runtime_after": 0.07576,
+          "accepted": false,
+          "note": ""
+        },
+        {
+          "step": 2,
+          "action": "REMOVE_RANKS",
+          "confidence": 0.78462,
+          "escalated": false,
+          "runtime_before": 0.059628,
+          "runtime_after": 0.054741,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 3,
+          "action": "REMOVE_RANKS",
+          "confidence": 0.99805,
+          "escalated": false,
+          "runtime_before": 0.054741,
+          "runtime_after": 0.026234,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 4,
+          "action": "USE_GPU",
+          "confidence": 0.69509,
+          "escalated": false,
+          "runtime_before": 0.026234,
+          "runtime_after": 0.007907,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 5,
+          "action": "STOP_TUNING",
+          "confidence": 0.91233,
+          "escalated": false,
+          "runtime_before": 0.007907,
+          "runtime_after": null,
+          "accepted": true,
+          "note": ""
+        }
+      ],
+      "speedup": 9.3188,
+      "best_known_config": {
+        "ranks": 1,
+        "threads": 16,
+        "gpu": true,
+        "precision": "fp32"
+      },
+      "best_known_runtime_now": 0.007618,
+      "final_runtime_now": 0.007595,
+      "pct_of_best_measured": 100.3,
+      "wall_sec": 7.2
+    },
+    {
+      "workload": "gemm",
+      "size": 2048,
+      "initial_config": {
+        "ranks": 2,
+        "threads": 2,
+        "gpu": false,
+        "precision": "bf16"
+      },
+      "final_config": {
+        "ranks": 1,
+        "threads": 2,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "initial_runtime": 10.679933,
+      "final_runtime": 0.002324,
+      "experiments": 4,
+      "escalations": 0,
+      "stopped_reason": "model_stop",
+      "steps": [
+        {
+          "step": 0,
+          "action": "USE_FP32",
+          "confidence": 0.504,
+          "escalated": false,
+          "runtime_before": 10.679933,
+          "runtime_after": 0.047375,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 1,
+          "action": "USE_GPU",
+          "confidence": 0.99952,
+          "escalated": false,
+          "runtime_before": 0.047375,
+          "runtime_after": 0.004424,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 2,
+          "action": "USE_BF16",
+          "confidence": 1.0,
+          "escalated": false,
+          "runtime_before": 0.004424,
+          "runtime_after": 0.002324,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 3,
+          "action": "STOP_TUNING",
+          "confidence": 0.92693,
+          "escalated": false,
+          "runtime_before": 0.002324,
+          "runtime_after": null,
+          "accepted": true,
+          "note": ""
+        }
+      ],
+      "speedup": 4595.4961,
+      "best_known_config": {
+        "ranks": 1,
+        "threads": 4,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "best_known_runtime_now": 0.002339,
+      "final_runtime_now": 0.00235,
+      "pct_of_best_measured": 99.5,
+      "wall_sec": 12.1
+    },
+    {
+      "workload": "mltrain",
+      "size": 4096,
+      "initial_config": {
+        "ranks": 2,
+        "threads": 8,
+        "gpu": false,
+        "precision": "bf16"
+      },
+      "final_config": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "initial_runtime": 5.912537,
+      "final_runtime": 0.002764,
+      "experiments": 3,
+      "escalations": 0,
+      "stopped_reason": "model_stop",
+      "steps": [
+        {
+          "step": 0,
+          "action": "ADD_RANKS",
+          "confidence": 0.56117,
+          "escalated": false,
+          "runtime_before": 5.912537,
+          "runtime_after": 3.243618,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 1,
+          "action": "USE_GPU",
+          "confidence": 0.993,
+          "escalated": false,
+          "runtime_before": 3.243618,
+          "runtime_after": 0.002764,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 2,
+          "action": "STOP_TUNING",
+          "confidence": 0.93123,
+          "escalated": false,
+          "runtime_before": 0.002764,
+          "runtime_after": null,
+          "accepted": true,
+          "note": ""
+        }
+      ],
+      "speedup": 2139.1234,
+      "best_known_config": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "best_known_runtime_now": 0.002244,
+      "final_runtime_now": 0.002246,
+      "pct_of_best_measured": 99.9,
+      "wall_sec": 19.7
+    },
+    {
+      "workload": "montecarlo",
+      "size": 8000000,
+      "initial_config": {
+        "ranks": 1,
+        "threads": 1,
+        "gpu": false,
+        "precision": "fp32"
+      },
+      "final_config": {
+        "ranks": 8,
+        "threads": 2,
+        "gpu": false,
+        "precision": "fp32"
+      },
+      "initial_runtime": 0.878495,
+      "final_runtime": 0.232142,
+      "experiments": 5,
+      "escalations": 0,
+      "stopped_reason": "model_stop",
+      "steps": [
+        {
+          "step": 0,
+          "action": "ADD_THREADS",
+          "confidence": 0.75549,
+          "escalated": false,
+          "runtime_before": 0.878495,
+          "runtime_after": 0.725604,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 1,
+          "action": "ADD_RANKS",
+          "confidence": 0.96944,
+          "escalated": false,
+          "runtime_before": 0.725604,
+          "runtime_after": 0.399495,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 2,
+          "action": "ADD_RANKS",
+          "confidence": 0.9991,
+          "escalated": false,
+          "runtime_before": 0.399495,
+          "runtime_after": 0.276605,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 3,
+          "action": "ADD_RANKS",
+          "confidence": 1.0,
+          "escalated": false,
+          "runtime_before": 0.276605,
+          "runtime_after": 0.232142,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 4,
+          "action": "STOP_TUNING",
+          "confidence": 0.90798,
+          "escalated": false,
+          "runtime_before": 0.232142,
+          "runtime_after": null,
+          "accepted": true,
+          "note": ""
+        }
+      ],
+      "speedup": 3.7843,
+      "best_known_config": {
+        "ranks": 8,
+        "threads": 2,
+        "gpu": false,
+        "precision": "fp32"
+      },
+      "best_known_runtime_now": 0.225547,
+      "final_runtime_now": 0.222027,
+      "pct_of_best_measured": 101.6,
+      "wall_sec": 15.3
+    },
+    {
+      "workload": "nbody",
+      "size": 4096,
+      "initial_config": {
+        "ranks": 1,
+        "threads": 2,
+        "gpu": false,
+        "precision": "fp32"
+      },
+      "final_config": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "initial_runtime": 0.461654,
+      "final_runtime": 0.003274,
+      "experiments": 5,
+      "escalations": 0,
+      "stopped_reason": "model_stop",
+      "steps": [
+        {
+          "step": 0,
+          "action": "ADD_THREADS",
+          "confidence": 0.58568,
+          "escalated": false,
+          "runtime_before": 0.461654,
+          "runtime_after": 0.231936,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 1,
+          "action": "ADD_THREADS",
+          "confidence": 0.38244,
+          "escalated": false,
+          "runtime_before": 0.231936,
+          "runtime_after": 0.173894,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 2,
+          "action": "USE_GPU",
+          "confidence": 0.77902,
+          "escalated": false,
+          "runtime_before": 0.173894,
+          "runtime_after": 0.006384,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 3,
+          "action": "USE_BF16",
+          "confidence": 1.0,
+          "escalated": false,
+          "runtime_before": 0.006384,
+          "runtime_after": 0.003274,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 4,
+          "action": "STOP_TUNING",
+          "confidence": 0.92177,
+          "escalated": false,
+          "runtime_before": 0.003274,
+          "runtime_after": null,
+          "accepted": true,
+          "note": ""
+        }
+      ],
+      "speedup": 141.0061,
+      "best_known_config": {
+        "ranks": 1,
+        "threads": 16,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "best_known_runtime_now": 0.003302,
+      "final_runtime_now": 0.003296,
+      "pct_of_best_measured": 100.2,
+      "wall_sec": 4.9
+    },
+    {
+      "workload": "server",
+      "size": 4000,
+      "initial_config": {
+        "ranks": 1,
+        "threads": 1,
+        "gpu": false,
+        "precision": "fp32"
+      },
+      "final_config": {
+        "ranks": 8,
+        "threads": 1,
+        "gpu": false,
+        "precision": "fp32"
+      },
+      "initial_runtime": 0.230182,
+      "final_runtime": 0.045729,
+      "experiments": 4,
+      "escalations": 0,
+      "stopped_reason": "model_stop",
+      "steps": [
+        {
+          "step": 0,
+          "action": "ADD_RANKS",
+          "confidence": 1.0,
+          "escalated": false,
+          "runtime_before": 0.230182,
+          "runtime_after": 0.120387,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 1,
+          "action": "ADD_RANKS",
+          "confidence": 1.0,
+          "escalated": false,
+          "runtime_before": 0.120387,
+          "runtime_after": 0.064138,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 2,
+          "action": "ADD_RANKS",
+          "confidence": 1.0,
+          "escalated": false,
+          "runtime_before": 0.064138,
+          "runtime_after": 0.045729,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 3,
+          "action": "STOP_TUNING",
+          "confidence": 0.98328,
+          "escalated": false,
+          "runtime_before": 0.045729,
+          "runtime_after": null,
+          "accepted": true,
+          "note": ""
+        }
+      ],
+      "speedup": 5.0336,
+      "best_known_config": {
+        "ranks": 8,
+        "threads": 1,
+        "gpu": false,
+        "precision": "fp32"
+      },
+      "best_known_runtime_now": 0.044873,
+      "final_runtime_now": 0.043161,
+      "pct_of_best_measured": 104.0,
+      "wall_sec": 4.6
+    },
+    {
+      "workload": "spmv",
+      "size": 800000,
+      "initial_config": {
+        "ranks": 2,
+        "threads": 2,
+        "gpu": false,
+        "precision": "fp32"
+      },
+      "final_config": {
+        "ranks": 1,
+        "threads": 4,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "initial_runtime": 0.105636,
+      "final_runtime": 0.008066,
+      "experiments": 4,
+      "escalations": 0,
+      "stopped_reason": "model_stop",
+      "steps": [
+        {
+          "step": 0,
+          "action": "ADD_THREADS",
+          "confidence": 0.9111,
+          "escalated": false,
+          "runtime_before": 0.105636,
+          "runtime_after": 0.084397,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 1,
+          "action": "USE_GPU",
+          "confidence": 0.74209,
+          "escalated": false,
+          "runtime_before": 0.084397,
+          "runtime_after": 0.009641,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 2,
+          "action": "USE_BF16",
+          "confidence": 0.99999,
+          "escalated": false,
+          "runtime_before": 0.009641,
+          "runtime_after": 0.008066,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 3,
+          "action": "STOP_TUNING",
+          "confidence": 0.92634,
+          "escalated": false,
+          "runtime_before": 0.008066,
+          "runtime_after": null,
+          "accepted": true,
+          "note": ""
+        }
+      ],
+      "speedup": 13.0965,
+      "best_known_config": {
+        "ranks": 1,
+        "threads": 16,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "best_known_runtime_now": 0.008121,
+      "final_runtime_now": 0.008056,
+      "pct_of_best_measured": 100.8,
+      "wall_sec": 2.7
+    },
+    {
+      "workload": "stencil",
+      "size": 160,
+      "initial_config": {
+        "ranks": 4,
+        "threads": 2,
+        "gpu": false,
+        "precision": "fp32"
+      },
+      "final_config": {
+        "ranks": 1,
+        "threads": 2,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "initial_runtime": 0.085798,
+      "final_runtime": 0.004309,
+      "experiments": 3,
+      "escalations": 0,
+      "stopped_reason": "model_stop",
+      "steps": [
+        {
+          "step": 0,
+          "action": "USE_GPU",
+          "confidence": 0.74208,
+          "escalated": false,
+          "runtime_before": 0.085798,
+          "runtime_after": 0.015025,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 1,
+          "action": "USE_BF16",
+          "confidence": 1.0,
+          "escalated": false,
+          "runtime_before": 0.015025,
+          "runtime_after": 0.004309,
+          "accepted": true,
+          "note": ""
+        },
+        {
+          "step": 2,
+          "action": "STOP_TUNING",
+          "confidence": 0.88997,
+          "escalated": false,
+          "runtime_before": 0.004309,
+          "runtime_after": null,
+          "accepted": true,
+          "note": ""
+        }
+      ],
+      "speedup": 19.9113,
+      "best_known_config": {
+        "ranks": 1,
+        "threads": 4,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "best_known_runtime_now": 0.004272,
+      "final_runtime_now": 0.004241,
+      "pct_of_best_measured": 100.7,
+      "wall_sec": 1.8
+    }
+  ]
+}

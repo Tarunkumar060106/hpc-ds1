@@ -1,0 +1,17 @@
+=== leave one kernel out (medium model) ===
+  gemm       acc 0.599 (rules 0.795)  ECE 0.317  regret 74.8%  tuning 9.4% of best (rules 68.7%)
+  fft        acc 0.619 (rules 0.531)  ECE 0.213  regret 62.79%  tuning 68.1% of best (rules 78.1%)
+  stencil    acc 0.837 (rules 0.689)  ECE 0.165  regret 3.91%  tuning 90.7% of best (rules 61.1%)
+  spmv       acc 0.883 (rules 0.864)  ECE 0.058  regret 1.65%  tuning 98.6% of best (rules 83.4%)
+  nbody      acc 0.898 (rules 0.724)  ECE 0.090  regret 6.59%  tuning 95.0% of best (rules 92.1%)
+  montecarlo acc 0.667 (rules 0.455)  ECE 0.213  regret 5.01%  tuning 80.2% of best (rules 79.6%)
+  mltrain    acc 0.909 (rules 0.845)  ECE 0.123  regret 0.23%  tuning 93.0% of best (rules 92.2%)
+  server     acc 0.176 (rules 0.039)  ECE 0.665  regret 55.27%  tuning 52.9% of best (rules 56.9%)
+
+=== input ablations (held-out sizes) ===
+  full model           acc 0.923  regret 0.94%  ECE 0.141
+  no telemetry         acc 0.937  regret 0.49%  ECE 0.116
+  no current config    acc 0.913  regret 0.25%  ECE 0.097
+  no kernel identity   acc 0.902  regret 1.36%  ECE 0.152
+
+saved results/generalization.json

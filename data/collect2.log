@@ -1,0 +1,14 @@
+Intel64 Family 6 Model 191 Stepping 2, GenuineIntel | 10C/16T | NVIDIA GeForce RTX 4050 Laptop GPU | 44 configs per problem
+gemm            1280: 44/44 ok in 100.0s (total    100s)
+gemm            2560: 44/44 ok in 426.9s (total    527s)
+fft               96: 22/44 ok in   4.4s (total    531s)
+fft              160: 22/44 ok in   8.8s (total    540s)
+stencil          112: 44/44 ok in  14.9s (total    555s)
+stencil          176: 44/44 ok in  23.6s (total    579s)
+spmv          300000: 27/44 ok in   9.9s (total    588s)
+spmv         1200000: 27/44 ok in  22.4s (total    611s)
+nbody           2560: 44/44 ok in  22.7s (total    634s)
+nbody           5120: 44/44 ok in  68.7s (total    702s)
+montecarlo   3000000: 44/44 ok in  33.1s (total    735s)
+montecarlo  12000000: 44/44 ok in 121.2s (total    857s)
+done in 858s

@@ -1,0 +1,10 @@
+{
+  "name": "LAPTOP-PJUEH9UD",
+  "cpu_model": "Intel64 Family 6 Model 191 Stepping 2, GenuineIntel",
+  "cpu_cores": 10,
+  "cpu_threads": 16,
+  "cpu_freq_ghz": 2.4,
+  "ram_gb": 23.7,
+  "gpu_model": "NVIDIA GeForce RTX 4050 Laptop GPU",
+  "gpu_memory_gb": 6.0
+}
