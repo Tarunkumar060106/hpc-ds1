@@ -1,0 +1,825 @@
+<title>HPC-DS1 Layer Explorer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#ffffff; --surface:#ffffff; --surface-2:#f7f7f8; --surface-3:#ececef;
+    --border:#e7e7e9; --border-2:#d6d6db;
+    --text:#1b1b1f; --muted:#55555c; --faint:#8a8a93;
+    --pos:#2f6fe4; --pos-dim:#dbe6fb; --neg:#c27c0e; --neg-dim:#fdf3e0;
+    --good:#1a9e5c; --bad:#d1442f; --warn:#c27c0e;
+    --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans:'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.45;
+       margin:0 auto;max-width:1280px;padding-inline:16px;padding-block:20px 48px;font-size:14px}
+  h1,h2,h3{font-family:var(--mono);margin:0;letter-spacing:-.01em;text-wrap:balance}
+  code,.mono{font-family:var(--mono)}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  button,select,input{font:inherit;color:inherit}
+  :focus-visible{outline:2px solid var(--pos);outline-offset:2px}
+  a{color:var(--pos)}
+
+  /* header */
+  header{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:flex-end;justify-content:space-between;
+         padding-bottom:16px;border-bottom:1px solid var(--border)}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--pos);margin-bottom:6px}
+  header h1{font-size:26px}
+  header p{margin:6px 0 0;color:var(--muted);max-width:58ch}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 11px;min-width:92px}
+  .chip .v{font-family:var(--mono);font-size:16px;font-weight:600}
+  .chip .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:1px}
+
+  .caveat{display:flex;gap:10px;align-items:flex-start;margin:16px 0;padding:10px 13px;border-radius:9px;
+          border:1px solid rgba(194,124,14,.35);background:rgba(194,124,14,.06);color:#8a5a00;font-size:13px}
+  .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;border-radius:4px;padding:2px 6px;
+       flex-shrink:0;border:1px solid currentColor}
+  .caveat .tag{color:var(--warn)}
+
+  /* tabs */
+  nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:18px;overflow-x:auto}
+  nav.tabs button{background:none;border:none;border-bottom:2px solid transparent;padding:10px 14px;cursor:pointer;
+                  color:var(--muted);font-family:var(--mono);font-size:13px;white-space:nowrap}
+  nav.tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--pos)}
+  nav.tabs button:hover{color:var(--text)}
+
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px;
+            display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .panel h2 small{font-family:var(--sans);text-transform:none;letter-spacing:0;font-weight:400;font-size:12px;color:var(--faint)}
+  .muted{color:var(--muted)} .faint{color:var(--faint)}
+
+  /* explorer toolbar */
+  .toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px}
+  .toolbar label{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center}
+  select,input[type=number]{background:var(--surface-2);border:1px solid var(--border-2);border-radius:7px;padding:7px 9px;min-width:0}
+  select{max-width:100%}
+  .mode{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--border-2);color:var(--muted)}
+  .mode.live{color:var(--good);border-color:rgba(26,158,92,.5)}
+
+  .explorer{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+  @media (max-width:980px){.explorer{grid-template-columns:1fr}}
+
+  /* network map */
+  .map-scroll{overflow-x:auto}
+  .map{min-width:640px;display:flex;flex-direction:column;gap:6px}
+  .stage-title{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
+               display:flex;justify-content:space-between;margin-top:6px}
+  .row{display:grid;gap:6px}
+  .cols4{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .cols3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .cols5{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .cols2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cols1{grid-template-columns:1fr}
+  .node{background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:6px 7px 7px;text-align:left;
+        cursor:pointer;display:flex;flex-direction:column;gap:5px;min-width:0;transition:border-color .12s,background .12s}
+  .node:hover{border-color:var(--border-2);background:var(--surface-3)}
+  .node[aria-pressed="true"]{border-color:var(--pos);background:#e8effc}
+  .node .nl{font-family:var(--mono);font-size:10.5px;color:var(--muted);display:flex;justify-content:space-between;gap:6px}
+  .node .nl span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .node .nl span:last-child{color:var(--faint);flex-shrink:0}
+  .strip{display:flex;height:9px;border-radius:2px;overflow:hidden}
+  .strip i{flex:1;display:block}
+  .strips{display:flex;flex-direction:column;gap:2px}
+  .strips .strip{height:5px}
+  .mini-attn{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;width:36px}
+  .mini-attn i{display:block;aspect-ratio:1}
+  .flow{height:10px;border-left:1px dashed var(--border-2);margin-left:50%}
+
+  /* detail */
+  .detail{position:sticky;top:12px;display:flex;flex-direction:column;gap:14px}
+  @media (max-width:980px){.detail{position:static}}
+  .detail h3{font-size:15px;margin-bottom:4px}
+  .op{font-family:var(--mono);font-size:12px;color:var(--pos);background:var(--surface-2);border:1px solid var(--border);
+      border-radius:6px;padding:7px 9px;overflow-x:auto;white-space:nowrap}
+  .meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted)}
+  .meta b{color:var(--text);font-family:var(--mono);font-weight:500}
+  .explain{font-size:13px;color:var(--muted);margin:0}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .stat{background:var(--surface-2);border-radius:6px;padding:6px 8px}
+  .stat .k{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em}
+  .stat .v{font-family:var(--mono);font-size:13px}
+  .bars{display:flex;flex-direction:column;gap:3px}
+  .bar-row{display:grid;grid-template-columns:minmax(90px,150px) 1fr 64px;gap:8px;align-items:center;font-size:11.5px}
+  .bar-row .l{font-family:var(--mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar-row .v{font-family:var(--mono);text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+  .track{height:10px;background:var(--surface-3);border-radius:3px;position:relative;overflow:hidden}
+  .track.center::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--border-2)}
+  .fill{position:absolute;top:0;bottom:0;border-radius:3px}
+  .token-row{display:grid;grid-template-columns:44px 1fr 56px;gap:8px;align-items:center;font-size:11px}
+  .token-row .strip{height:14px}
+  .attn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px}
+  .attn-card .t{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-bottom:4px}
+  .hm{display:grid;grid-template-columns:30px repeat(4,1fr);gap:2px;font-family:var(--mono);font-size:9px;color:var(--faint)}
+  .hm i{display:flex;align-items:center;justify-content:center;aspect-ratio:1;font-style:normal;font-size:9px;border-radius:2px}
+  .hm span{display:flex;align-items:center;justify-content:center}
+  .insight{font-size:12.5px;border-left:2px solid var(--pos);padding:4px 0 4px 10px;color:var(--text)}
+
+  /* decision */
+  .decision-head{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline}
+  .decision-head .choice{font-family:var(--mono);font-size:20px;font-weight:700}
+  .pill{font-family:var(--mono);font-size:11px;border-radius:999px;padding:3px 9px;border:1px solid}
+  .pill.auto{color:var(--good);border-color:rgba(26,158,92,.5);background:rgba(26,158,92,.08)}
+  .pill.esc{color:var(--warn);border-color:rgba(194,124,14,.5);background:rgba(194,124,14,.08)}
+  .pill.ok{color:var(--good);border-color:rgba(26,158,92,.4)}
+  .pill.miss{color:var(--bad);border-color:rgba(209,68,47,.45)}
+  .conf-track{position:relative;height:12px;background:var(--surface-3);border-radius:6px;margin:10px 0 4px}
+  .conf-fill{position:absolute;inset:0 auto 0 0;border-radius:6px}
+  .conf-mark{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--text)}
+  .slider{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted)}
+  .slider input{flex:1;accent-color:var(--pos)}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border)}
+  th{font-weight:500;color:var(--faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em}
+  td.r,th.r{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+  tr.hl-best td{background:rgba(26,158,92,.07)}
+  tr.hl-pick td:first-child{box-shadow:inset 2px 0 0 var(--pos)}
+  .tbl-scroll{overflow-x:auto}
+
+  /* playground */
+  .playground{margin-bottom:16px}
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 12px;align-items:end}
+  .field{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--muted)}
+  .check{flex-direction:row;align-items:center;gap:7px;padding-bottom:8px;color:var(--text)}
+  .btn{background:var(--pos);color:#ffffff;border:none;border-radius:7px;padding:8px 14px;font-weight:600;cursor:pointer}
+  .btn.ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border-2)}
+  .btn:disabled{opacity:.5;cursor:wait}
+  .actions-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+  .err{color:var(--bad);font-size:12.5px}
+  .cmd{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+  .cmd code{background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:6px 9px;user-select:all}
+
+  /* use it */
+  .use-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:16px;align-items:start}
+  @media (max-width:980px){.use-grid{grid-template-columns:1fr}}
+  .steps{display:flex;flex-direction:column;gap:12px;margin:0;padding:0;list-style:none;counter-reset:s}
+  .steps li{counter-increment:s;display:grid;grid-template-columns:28px 1fr;gap:10px}
+  .steps li::before{content:counter(s);font-family:var(--mono);font-size:12px;width:24px;height:24px;border-radius:50%;
+                    border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:var(--pos)}
+  .steps b{display:block;margin-bottom:2px}
+  .steps p{margin:0;color:var(--muted);font-size:13px}
+  .code-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+  .code-tabs button{background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;
+                    cursor:pointer;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  .code-tabs button[aria-selected="true"]{color:var(--text);border-color:var(--pos)}
+  pre{margin:0;background:#f7f7f8;border:1px solid var(--border);border-radius:8px;padding:12px 14px;overflow-x:auto;
+      font-family:var(--mono);font-size:12.5px;line-height:1.55;color:#33333a}
+  .code-wrap{position:relative}
+  .copy{position:absolute;top:8px;right:8px;font-size:11px;padding:4px 8px}
+  .code-note{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+  .k-kw{color:#8a3ffc}.k-str{color:#2e7d32}.k-cm{color:#8a8a93}.k-num{color:#b5470f}.k-fn{color:#1f4fbf}
+
+  /* eval */
+  .eval-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+  @media (max-width:900px){.eval-grid{grid-template-columns:1fr}}
+  .span2{grid-column:1/-1}
+  svg.chart{width:100%;height:auto;display:block;overflow:visible}
+  svg.chart text{fill:var(--muted);font-family:var(--mono);font-size:10px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px;color:var(--muted);margin-top:8px}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+  .confusion{display:grid;gap:2px;font-family:var(--mono);font-size:9.5px}
+  .confusion i{font-style:normal;display:flex;align-items:center;justify-content:center;aspect-ratio:1;border-radius:2px;min-width:0}
+  .confusion span{color:var(--faint);display:flex;align-items:center;overflow:hidden;white-space:nowrap}
+
+  footer{margin-top:28px;text-align:center;font-size:11px;color:var(--faint);font-family:var(--mono)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  /* real-data additions */
+  .caveat.real{border-color:rgba(26,158,92,.35);background:rgba(26,158,92,.06);color:#1a7a48}
+  .caveat.real .tag{color:var(--good)}
+  .land-wrap{display:flex;flex-wrap:wrap;gap:18px}
+  .land-block .t{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
+  .land{display:grid;gap:2px;font-family:var(--mono);font-size:9.5px}
+  .land span{color:var(--faint);display:flex;align-items:center;justify-content:center;padding:0 3px;white-space:nowrap}
+  .land i{font-style:normal;display:flex;align-items:center;justify-content:center;min-width:46px;height:30px;border-radius:3px;color:#1b1b1f}
+  .land i.none{background:transparent}
+  .land i.fail{background:repeating-linear-gradient(45deg,#fde9e5,#fde9e5 4px,#fdf3f1 4px,#fdf3f1 8px);color:var(--bad)}
+  .land i.best{outline:2px solid var(--good);outline-offset:-2px}
+  .scale{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-top:10px}
+  .scale .bar{height:8px;width:160px;border-radius:4px;background:linear-gradient(90deg,#1a9e5c,#ececef 55%,#d1442f)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:12px}
+  .kpi{background:var(--surface-2);border-radius:8px;padding:8px 10px}
+  .kpi .v{font-family:var(--mono);font-size:17px;font-weight:600}
+  .kpi .k{font-size:10.5px;color:var(--muted)}
+  .running{font-size:12.5px;color:var(--warn);font-family:var(--mono)}
+</style>
+
+<header>
+  <div>
+    <div class="eyebrow"><a href="/" style="text-decoration:none">&larr; HPC-DS1 console</a> &middot; layer explorer</div>
+    <h1>Inside every layer</h1>
+    <p>Pick a job and follow it through all layers: the four input encoders, attention fusion, pooling and the decision heads. Every number is a real activation from the trained model, and every runtime is a real measurement.</p>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+
+<div class="caveat real">
+  <span class="tag">REAL DATA</span>
+  <span id="dataNote">Loading&hellip;</span>
+</div>
+
+<nav class="tabs" role="tablist" aria-label="Sections">
+  <button role="tab" id="tab-explorer" aria-controls="explorer" aria-selected="true" data-tab="explorer">Layer explorer</button>
+  <button role="tab" id="tab-data" aria-controls="data" aria-selected="false" data-tab="data">The measurements</button>
+  <button role="tab" id="tab-use" aria-controls="use" aria-selected="false" data-tab="use">Use it like Jev</button>
+  <button role="tab" id="tab-eval" aria-controls="eval" aria-selected="false" data-tab="eval">Evaluation</button>
+</nav>
+
+<!-- ================= EXPLORER ================= -->
+<section id="explorer" role="tabpanel" aria-labelledby="tab-explorer">
+  <div class="panel playground" id="playground"></div>
+  <div class="toolbar">
+    <label for="traceSelect">Job
+      <select id="traceSelect"></select>
+    </label>
+    <span class="mode" id="modeBadge">saved examples</span>
+  </div>
+  <div class="explorer">
+    <div class="panel">
+      <h2>Network map <small id="mapSub"></small></h2>
+      <div class="map-scroll"><div class="map" id="map"></div></div>
+      <p class="faint" style="font-size:11.5px;margin:10px 0 0">Strips show each layer's activations (64 bins); <span style="color:var(--pos)">teal = positive</span>, <span style="color:var(--neg)">amber = negative</span>, brightness = magnitude within that layer. Click any layer.</p>
+    </div>
+    <div class="detail">
+      <div class="panel" id="layerDetail"></div>
+      <div class="panel" id="decision"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DATA ================= -->
+<section id="data" role="tabpanel" aria-labelledby="tab-data" hidden>
+  <div class="panel" style="margin-bottom:16px">
+    <h2>What was measured <small id="hwNote"></small></h2>
+    <div class="kpis" id="dataKpis"></div>
+    <div class="tbl-scroll" id="kernelTable"></div>
+  </div>
+  <div class="panel">
+    <h2>Measured landscape <small>real runtime of every configuration</small></h2>
+    <div class="toolbar"><label for="landSelect">Problem <select id="landSelect"></select></label><span class="faint" id="landNote" style="font-size:12px"></span></div>
+    <div class="map-scroll"><div class="land-wrap" id="landscape"></div></div>
+    <div class="scale"><span>faster</span><span class="bar"></span><span>slower than best</span><span style="margin-left:14px">green outline = fastest measured</span><span>&middot; hatched = failed or wrong answer</span></div>
+    <h2 style="margin-top:18px">Configs that don't work <small>real errors, kept out of training</small></h2>
+    <div class="tbl-scroll" id="failTable"></div>
+  </div>
+</section>
+
+<!-- ================= USE IT ================= -->
+<section id="use" role="tabpanel" aria-labelledby="tab-use" hidden>
+  <div class="use-grid">
+    <div class="panel">
+      <h2>The pattern</h2>
+      <ol class="steps">
+        <li><div><b>Find the branching point</b><p>Wherever a script or engineer picks ranks, threads, GPU or precision by rule of thumb.</p></div></li>
+        <li><div><b>Run once, then ask</b><p><code>model.observe(...)</code> runs the job once and measures it; <code>model.decide(state)</code> returns a choice, a confidence and every option's probability.</p></div></li>
+        <li><div><b>Act on confidence</b><p>Above your threshold, apply the change automatically. Below it, hand the suggestion and alternatives to an engineer. <code>STOP_TUNING</code> means it thinks the config is already as good as it gets.</p></div></li>
+        <li><div><b>Let it tune</b><p><code>model.tune(...)</code> loops decide &rarr; run &rarr; measure on this machine and keeps only changes that really made the job faster.</p></div></li>
+      </ol>
+      <h2 style="margin-top:20px">Jev &harr; HPC-DS1</h2>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Jev</th><th>HPC-DS1</th></tr></thead>
+        <tbody>
+          <tr><td><code>jev.decide(context, options)</code></td><td><code>model.decide(state, candidates)</code></td></tr>
+          <tr><td>context: text</td><td>state: hardware, kernel and size, config, measured telemetry</td></tr>
+          <tr><td>options: your labels</td><td>candidates: any subset of the 9 actions (default: all valid)</td></tr>
+          <tr><td>choice, confidence, probabilities</td><td>same, plus stop probability and expected speedup</td></tr>
+          <tr><td>escalate below a threshold</td><td><code>should_escalate</code>; <code>tune(on_escalate=...)</code></td></tr>
+          <tr><td>deterministic</td><td>deterministic (same state &rarr; same output)</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="panel">
+      <h2>Code <small id="latencyNote"></small></h2>
+      <div class="code-tabs" role="tablist" id="codeTabs"></div>
+      <div class="code-wrap"><pre id="codeBlock"></pre><button class="btn ghost copy" id="copyBtn" type="button">Copy</button></div>
+      <p class="code-note" id="codeNote"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= EVAL ================= -->
+<section id="eval" role="tabpanel" aria-labelledby="tab-eval" hidden>
+  <div class="eval-grid">
+    <div class="panel span2"><h2>Tuning sessions on problems the model never saw <small id="loopNote"></small></h2><div class="tbl-scroll" id="loopTable"></div>
+      <p class="faint" style="font-size:12px;margin:8px 0 0">Replayed over the real measurements of the held-out problem sizes, starting from every measured configuration. "% of best config" compares the final runtime with the fastest configuration measured for that problem.</p></div>
+    <div class="panel span2" id="livePanel" hidden><h2>Live sessions on the hardware <small>every step executed for real during evaluation</small></h2><div class="tbl-scroll" id="liveTable"></div></div>
+    <div class="panel"><h2>Automation vs accuracy <small>by confidence threshold</small></h2><div id="chartEscalation"></div>
+      <div class="legend"><span><i style="background:var(--pos)"></i>decisions auto-run</span><span><i style="background:var(--good)"></i>accuracy of auto-run decisions</span></div></div>
+    <div class="panel"><h2>Calibration <small id="eceNote"></small></h2><div id="chartReliability"></div>
+      <div class="legend"><span><i style="background:var(--pos)"></i>observed accuracy per confidence bin</span><span><i style="background:var(--faint)"></i>perfect calibration</span></div></div>
+    <div class="panel span2" id="genPanel" hidden><h2>Never-seen kernel <small>trained on the other 5 kernels</small></h2><div class="tbl-scroll" id="genKernel"></div>
+      <p class="faint" style="font-size:12px;margin:8px 0 0">Regret = how much slower the best runtime reachable after the chosen move is than the best reachable at all (geometric mean over states). Calibration error above 0.12 (project target) is flagged.</p></div>
+    <div class="panel span2" id="ablPanel" hidden><h2>Which inputs matter <small>retrained with one input group removed</small></h2><div class="tbl-scroll" id="ablation"></div></div>
+    <div class="panel"><h2>Single-decision quality <small id="decNote"></small></h2><div class="tbl-scroll" id="decTable"></div>
+      <h2 style="margin-top:18px">Accuracy by kernel</h2><div class="bars" id="byWorkload"></div></div>
+    <div class="panel"><h2>Confusion matrix <small>rows = labelled best first move</small></h2><div class="tbl-scroll" id="confusion"></div></div>
+    <div class="panel span2"><h2>Model size sweep <small>picked on validation loss</small></h2><div class="tbl-scroll" id="sweep"></div>
+      <h2 style="margin-top:18px">Training curve</h2><div id="chartTrain" style="max-width:640px"></div>
+      <div class="legend"><span><i style="background:var(--pos)"></i>train loss</span><span><i style="background:var(--neg)"></i>val loss</span><span><i style="background:var(--good)"></i>val accuracy</span></div></div>
+  </div>
+</section>
+
+<footer id="footer">hpc-ds1</footer>
+
+<script>
+(function(){
+"use strict";
+
+var S = { data:null, idx:0, layer:"head.action.logits", live:false, liveInfo:null, liveTrace:null, threshold:0.85 };
+var TOK = ["HW","WL","CFG","TEL"], TOK_FULL = ["hardware","workload","config","telemetry"];
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+function fmt(x,d){ if(x===null||x===undefined||isNaN(x)) return "–"; var a=Math.abs(x);
+  if(a!==0&&(a<1e-3||a>=1e5)) return x.toExponential(1); return x.toFixed(d===undefined?3:d); }
+function pct(x,d){ return x===null||x===undefined?"–":(100*x).toFixed(d===undefined?1:d)+"%"; }
+function human(n){ return n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(0)+"k":String(n); }
+function ms(sec){ if(sec===null||sec===undefined) return "–"; return sec>=1?sec.toFixed(2)+" s":sec>=0.01?(sec*1000).toFixed(1)+" ms":(sec*1000).toFixed(2)+" ms"; }
+function shortLabel(l){ var p=l.split(" · "); return p.length>1?p[1]:l; }
+function clamp(x){ return Math.max(0,Math.min(1,x)); }
+function cfgStr(c){ return c.gpu ? "GPU · "+c.threads+"T · "+c.precision : c.ranks+" rank"+(c.ranks>1?"s":"")+" × "+c.threads+" thread"+(c.threads>1?"s":"")+" · "+c.precision; }
+function sizeStr(w,s){ var u=S.data.workloads[w].size_unit; return Number(s).toLocaleString()+" "+u.split(" ")[0]; }
+
+function mix(a,b,t){ return "rgb("+[0,1,2].map(function(i){return Math.round(a[i]+(b[i]-a[i])*t);}).join(",")+")"; }
+var C_BG=[22,30,42], C_POS=[69,217,200], C_NEG=[245,166,35], C_GOOD=[63,185,80], C_BAD=[248,81,73], C_MID=[30,39,53];
+function divColor(v,m){ var t=Math.pow(clamp(Math.abs(v)/(m||1)),0.7); return mix(C_BG, v>=0?C_POS:C_NEG, t); }
+function seqColor(v){ return mix(C_BG,C_POS,Math.pow(clamp(v),0.6)); }
+function maxAbs(arr){ var m=0; arr.forEach(function(v){ if(Math.abs(v)<1e3) m=Math.max(m,Math.abs(v)); }); return m||1; }
+function strip(vals,m){ m=m||maxAbs(vals); return '<div class="strip">'+vals.map(function(v){
+  return '<i style="background:'+(Math.abs(v)>=1e3?"#f7f7f8":divColor(v,m))+'"></i>'; }).join("")+'</div>'; }
+
+function summarize(v){
+  var bins=Math.min(64,v.length), per=Math.floor(v.length/bins), b=[], s=0, s2=0, neg=0, mn=Infinity, mx=-Infinity;
+  for(var i=0;i<bins;i++){ var a=0; for(var j=0;j<per;j++) a+=v[i*per+j]; b.push(a/per); }
+  v.forEach(function(x){ s+=x; s2+=x*x; if(x<0) neg++; mn=Math.min(mn,x); mx=Math.max(mx,x); });
+  var mean=s/v.length;
+  return {bins:b, mean:mean, std:Math.sqrt(Math.max(0,s2/v.length-mean*mean)), min:mn, max:mx, l2:Math.sqrt(s2), frac_negative:neg/v.length};
+}
+function normalizeTrace(t){
+  S.data.catalog.forEach(function(c){ var L=t.layers[c.id];
+    if(c.kind==="vector" && L && !L.bins && L.values) t.layers[c.id]=summarize(L.values); });
+  return t;
+}
+function trace(){ return S.liveTrace || S.data.traces[S.idx]; }
+function catalog(){ return S.data.catalog; }
+function cat(id){ for(var i=0;i<catalog().length;i++) if(catalog()[i].id===id) return catalog()[i]; return null; }
+
+/* ---------------- header ---------------- */
+function replayRow(name){ var r=null; S.data.replay.summary.forEach(function(s){ if(s.policy===name) r=s; }); return r; }
+function renderChips(){
+  var d=S.data, m=d.metrics, auto=null;
+  m.escalation_curve.forEach(function(e){ if(Math.abs(e.threshold-0.85)<1e-9) auto=e; });
+  var mr=replayRow("HPC-DS1 (autonomous)");
+  var chips=[[human(d.model.parameters),"parameters"],[pct(m.accuracy),"picks a best move"],
+    [m.ece.toFixed(3),"calibration err."],[auto?pct(auto.coverage,0):"–","auto-run @0.85"],
+    [mr?mr.pct_of_best_config.toFixed(0)+"%":"–","of best config reached"]];
+  $("chips").innerHTML=chips.map(function(c){return '<div class="chip"><div class="v">'+c[0]+'</div><div class="k">'+c[1]+'</div></div>';}).join("");
+  var hw=d.hardware;
+  $("dataNote").innerHTML="Every runtime here was measured on <b>"+esc(hw.cpu_model.split(",")[0])+" ("+hw.cpu_cores+" cores / "+hw.cpu_threads+" threads, "+hw.ram_gb+" GB) + "+esc(hw.gpu_model||"no GPU")+
+    "</b>: "+d.dataset.measurements.toLocaleString()+" real runs of 6 HPC kernels. Nothing is simulated. One machine means the model has only ever seen this hardware.";
+  $("footer").textContent="hpc-ds1 "+d.model.version+" · "+d.model.size+" model · trained "+d.model.trained_at.slice(0,10)+" on "+hw.name;
+}
+
+/* ---------------- tabs ---------------- */
+var rendered={};
+function showTab(name){
+  ["explorer","data","use","eval"].forEach(function(t){
+    $(t).hidden = t!==name; $("tab-"+t).setAttribute("aria-selected", t===name?"true":"false"); });
+  if(!rendered[name]){ rendered[name]=true; if(name==="eval") renderEval(); if(name==="data") renderData(); }
+  try{ history.replaceState(null,"","#"+name); }catch(e){}
+}
+document.querySelectorAll("nav.tabs button").forEach(function(b){ b.addEventListener("click",function(){ showTab(b.dataset.tab); }); });
+
+/* ---------------- picker ---------------- */
+function renderPicker(){
+  var d=S.data, groups={}, html="";
+  d.traces.forEach(function(t,i){ (groups[t.workload]=groups[t.workload]||[]).push(i); });
+  if(S.liveTrace) html+='<option value="live">Your job (ran just now): '+esc(S.liveTrace.workload)+' '+esc(sizeStr(S.liveTrace.workload,S.liveTrace.size))+', '+esc(cfgStr(S.liveTrace.state.config))+'</option>';
+  Object.keys(groups).forEach(function(w){
+    html+='<optgroup label="'+esc(d.workloads[w].display_name)+' (held-out size, never seen in training)">';
+    groups[w].forEach(function(i){ var t=d.traces[i], dc=t.decision;
+      var tag = t.correct ? (dc.confidence>=0.85?"confident, right":"unsure, right") : "wrong";
+      html+='<option value="'+i+'">'+esc(cfgStr(t.state.config))+' → '+esc(dc.choice)+' ('+pct(dc.confidence,0)+') · '+tag+'</option>'; });
+    html+='</optgroup>';
+  });
+  $("traceSelect").innerHTML=html;
+  $("traceSelect").value = S.liveTrace?"live":String(S.idx);
+}
+$("traceSelect").addEventListener("change",function(e){
+  if(e.target.value!=="live"){ S.liveTrace=null; S.idx=parseInt(e.target.value,10); renderPicker(); }
+  renderExplorer();
+});
+
+/* ---------------- network map ---------------- */
+function avgHeads(heads){
+  var n=heads.length, out=[0,1,2,3].map(function(){return [0,0,0,0];});
+  heads.forEach(function(h){ h.forEach(function(r,i){ r.forEach(function(v,j){ out[i][j]+=v/n; }); }); });
+  return out;
+}
+function nodeHTML(c){
+  var L=trace().layers[c.id]; if(!L) return "";
+  var viz="", stat="";
+  if(c.kind==="input"){ viz=strip(L.values); stat=L.values.length+"d"; }
+  else if(c.kind==="vector"){ viz=strip(L.bins); stat="‖"+fmt(L.l2,1)+"‖"; }
+  else if(c.kind==="tokens"){ var m=0; L.tokens.forEach(function(t){m=Math.max(m,maxAbs(t.bins));});
+    viz='<div class="strips">'+L.tokens.map(function(t){return strip(t.bins,m);}).join("")+'</div>'; stat="4×"+c.shape[1]; }
+  else if(c.kind==="attention"){ var avg=avgHeads(L.heads);
+    viz='<div class="mini-attn">'+avg.map(function(r){return r.map(function(v){return '<i style="background:'+seqColor(v)+'"></i>';}).join("");}).join("")+'</div>';
+    stat=c.shape[0]+" heads"; }
+  else if(c.kind==="logits"){ viz=strip(L.values); stat=L.values.length===1?fmt(L.values[0],2):L.values.length+" out"; }
+  var label = shortLabel(c.label).replace("residual ","");
+  return '<button type="button" class="node" data-id="'+c.id+'" aria-pressed="'+(S.layer===c.id)+'" title="'+esc(c.label)+'">'+
+    '<div class="nl"><span>'+esc(label)+'</span><span>'+stat+'</span></div>'+viz+'</button>';
+}
+function renderMap(){
+  var cs=catalog(), html="";
+  function row(ids,cls,title,note){
+    var items=ids.map(cat).filter(Boolean); if(!items.length) return "";
+    return (title?'<div class="stage-title"><span>'+title+'</span><span>'+(note||"")+'</span></div>':"")+
+      '<div class="row '+cls+'">'+items.map(nodeHTML).join("")+'</div>';
+  }
+  function params(g){ return human(cs.filter(function(c){return c.group===g;}).reduce(function(a,c){return a+c.params;},0))+" params"; }
+  html+=row(TOK_FULL.map(function(m){return "input."+m;}),"cols4","1 · inputs","4 groups");
+  var enc=cs.filter(function(c){return c.group==="Encoders";}), per=enc.length/4;
+  html+='<div class="stage-title"><span>2 · modular encoders</span><span>'+params("Encoders")+'</span></div>';
+  for(var k=0;k<per;k++) html+=row(TOK_FULL.map(function(m){ return enc.filter(function(c){return c.module===m;})[k].id; }),"cols4");
+  html+='<div class="stage-title"><span>3 · attention fusion over 4 tokens</span><span>'+params("Fusion")+'</span></div>';
+  html+=row(["fusion.tokens"],"cols1");
+  for(var i=0;i<S.data.model.hparams.fusion_layers;i++) html+=row(["fusion.layer"+i+".attention","fusion.layer"+i+".attn_out","fusion.layer"+i+".out"],"cols3");
+  html+=row(["fusion.final_norm"],"cols1");
+  html+=row(["pool.mean","pool.proj"],"cols2","4 · pooling",params("Pooling"));
+  html+=row(["head.action.hidden","head.action.logits","head.stop","head.improvement"],"cols4","5 · decision heads",params("Heads"));
+  $("map").innerHTML=html;
+  $("mapSub").textContent=cs.length+" layers · "+S.data.model.parameters.toLocaleString()+" parameters";
+  $("map").querySelectorAll(".node").forEach(function(b){ b.addEventListener("click",function(){ S.layer=b.dataset.id; renderMap(); renderLayer(); }); });
+}
+
+/* ---------------- layer detail ---------------- */
+var EXPLAIN={
+  input:"The numbers the model sees for this group after normalisation (log scales for sizes, counts and runtimes; 0–1 for utilisation).",
+  input_proj:"Lifts the handful of input numbers into a wider vector so later layers have room to combine them.",
+  block:"Residual block: LayerNorm, expand, GELU, project back, add to the input. The skip path keeps the original signal intact.",
+  out_norm:"Normalises the group's summary so the four groups arrive at fusion on the same scale.",
+  tokens:"The four group summaries stacked as a 4-token sequence, plus a learned embedding that tells the model which token is which.",
+  attention:"Each head decides how much every token reads from every other token. Rows are the reading token, columns the token being read.",
+  attn_out:"What each token gathered from the others through attention, before it is added back.",
+  out:"Each token after attention and its feed-forward layer.",
+  final_norm:"Final normalisation of the four fused tokens.",
+  "pool.mean":"Averages the four tokens into one vector describing the whole job.",
+  "pool.proj":"One more learned transform; every decision head reads from here.",
+  "head.action.hidden":"Hidden layer of the action head.",
+  "head.action.logits":"One score per action. Actions that can't apply to this config are masked out. Softmax with the calibrated temperature turns these into the probabilities on the right.",
+  "head.stop":"Logit for \"tuning is done\". Positive means the model thinks no change will make the job meaningfully faster.",
+  "head.improvement":"Predicted fraction of runtime the best change would save (0.4 = 40% faster)."
+};
+function explainFor(c){
+  if(EXPLAIN[c.id]) return EXPLAIN[c.id];
+  if(c.kind==="input") return EXPLAIN.input; if(c.kind==="attention") return EXPLAIN.attention;
+  var tail=c.id.split(".").pop(); return tail.indexOf("block")===0?EXPLAIN.block:(EXPLAIN[tail]||"");
+}
+function barsSigned(names,vals,hl){
+  var m=maxAbs(vals);
+  return '<div class="bars">'+vals.map(function(v,i){
+    var masked=Math.abs(v)>=1e3, w=masked?0:Math.abs(v)/m*50, left=v>=0?50:50-w;
+    return '<div class="bar-row"><div class="l"'+(hl===i?' style="color:var(--text)"':'')+' title="'+esc(names[i])+'">'+esc(names[i])+'</div>'+
+      '<div class="track center"><div class="fill" style="left:'+left+'%;width:'+w+'%;background:'+(v>=0?"var(--pos)":"var(--neg)")+'"></div></div>'+
+      '<div class="v">'+(masked?"n/a":fmt(v,2))+'</div></div>'; }).join("")+'</div>';
+}
+function statsGrid(L){
+  var it=[["mean",L.mean],["std",L.std],["L2 norm",L.l2],["min",L.min],["max",L.max],["negative",null]];
+  return '<div class="stats">'+it.map(function(s){ return '<div class="stat"><div class="k">'+s[0]+'</div><div class="v">'+(s[1]===null?pct(L.frac_negative,0):fmt(s[1],3))+'</div></div>'; }).join("")+'</div>';
+}
+function binsChart(bins,dim){
+  var m=maxAbs(bins), w=360, h=90, bw=w/bins.length;
+  var bars=bins.map(function(v,i){ var bh=Math.abs(v)/m*(h/2-4);
+    return '<rect x="'+(i*bw+0.5).toFixed(1)+'" y="'+(v>=0?h/2-bh:h/2).toFixed(1)+'" width="'+Math.max(bw-1,1).toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="'+(v>=0?"#2f6fe4":"#c27c0e")+'"/>'; }).join("");
+  return '<svg class="chart" viewBox="0 0 '+w+' '+(h+14)+'" role="img" aria-label="Activation values across the vector"><line x1="0" x2="'+w+'" y1="'+h/2+'" y2="'+h/2+'" stroke="#d6d6db"/>'+bars+
+    '<text x="0" y="'+(h+12)+'">dim 0</text><text x="'+w+'" y="'+(h+12)+'" text-anchor="end">dim '+(dim-1)+(bins.length<dim?" ("+bins.length+" bins)":"")+'</text></svg>';
+}
+function heatmap(m){
+  var html='<div class="hm"><span></span>'+TOK.map(function(t){return '<span>'+t+'</span>';}).join("");
+  m.forEach(function(r,i){ html+='<span>'+TOK[i]+'</span>'+r.map(function(v,j){
+    return '<i style="background:'+seqColor(v)+';color:'+(v>0.55?"#ffffff":"#55555c")+'" title="'+TOK_FULL[i]+' reads '+TOK_FULL[j]+': '+v.toFixed(3)+'">'+(v>=0.995?"1":v.toFixed(2).replace(/^0/,""))+'</i>'; }).join(""); });
+  return html+'</div>';
+}
+function attnInsight(heads){
+  var avg=avgHeads(heads), col=[0,0,0,0];
+  avg.forEach(function(r){ r.forEach(function(v,j){ col[j]+=v/4; }); });
+  var top=col.indexOf(Math.max.apply(null,col));
+  return "On average, tokens put "+pct(col[top],0)+" of their attention on the <b>"+TOK_FULL[top]+"</b> token in this layer.";
+}
+function inputRaw(mod){
+  var s=trace().state; if(!s) return "";
+  if(mod==="hardware") return s.hardware.cpu_cores+" cores / "+s.hardware.cpu_threads+" threads, "+s.hardware.ram_gb+" GB RAM, GPU "+(s.hardware.gpu_model||"none");
+  if(mod==="workload") return S.data.workloads[s.workload.name].display_name+", "+sizeStr(s.workload.name,s.workload.size);
+  if(mod==="config") return cfgStr(s.config);
+  var t=s.telemetry; return "runtime "+ms(t.runtime_sec)+", CPU "+t.cpu_util_pct+"%, GPU busy "+t.gpu_busy_pct+"%, communication "+t.comm_overhead_pct+"%, memory "+t.memory_gb+" GB, noise "+t.noise_pct+"%";
+}
+function renderLayer(){
+  var c=cat(S.layer), L=trace().layers[S.layer];
+  if(!c||!L){ $("layerDetail").innerHTML='<p class="muted">Pick a layer.</p>'; return; }
+  var body="";
+  if(c.kind==="input"){
+    body=barsSigned(c.features,L.values)+'<p class="faint" style="font-size:12px;margin:10px 0 0">Measured: '+esc(inputRaw(c.module))+'</p>';
+  } else if(c.kind==="vector"){ body=binsChart(L.bins,c.shape[0])+statsGrid(L); }
+  else if(c.kind==="tokens"){ var m=0; L.tokens.forEach(function(t){ m=Math.max(m,maxAbs(t.bins)); });
+    body=L.tokens.map(function(t,i){ return '<div class="token-row"><span class="mono muted">'+TOK[i]+'</span>'+strip(t.bins,m)+'<span class="num" style="text-align:right">‖'+fmt(t.l2,1)+'‖</span></div>'; }).join("")+
+      '<p class="faint" style="font-size:11.5px;margin:6px 0 0">One row per token ('+c.shape[1]+' dims, binned); ‖·‖ is the vector length.</p>';
+  } else if(c.kind==="attention"){
+    body='<p class="insight">'+attnInsight(L.heads)+'</p><div class="attn-grid" style="margin-top:12px">'+
+      L.heads.map(function(h,hi){ return '<div class="attn-card"><div class="t">head '+(hi+1)+'</div>'+heatmap(h)+'</div>'; }).join("")+
+      '<div class="attn-card"><div class="t">average</div>'+heatmap(avgHeads(L.heads))+'</div></div>';
+  } else if(c.kind==="logits"){
+    var names=c.names||L.values.map(function(_,i){return "out "+i;});
+    body=barsSigned(names,L.values,c.id==="head.action.logits"?S.data.actions.indexOf(trace().decision.choice):-1);
+  }
+  $("layerDetail").innerHTML='<div><div class="eyebrow" style="margin-bottom:4px">'+esc(c.group)+'</div><h3>'+esc(c.label)+'</h3></div>'+
+    (c.op?'<div class="op">'+esc(c.op)+'</div>':"")+
+    '<div class="meta"><span>shape <b>['+c.shape.join(" × ")+']</b></span><span>params <b>'+c.params.toLocaleString()+'</b></span></div>'+
+    '<p class="explain">'+esc(explainFor(c))+'</p>'+body;
+}
+
+/* ---------------- decision ---------------- */
+function renderDecision(){
+  var t=trace(), d=t.decision, auto=d.confidence>=S.threshold, outcomes=t.outcomes, base=t.state.telemetry.runtime_sec;
+  var probs=Object.keys(d.probabilities).map(function(a){return [a,d.probabilities[a]];}).sort(function(a,b){return b[1]-a[1];});
+  var truth=t.label;
+  if(!truth && outcomes){ var best=null; Object.keys(outcomes).forEach(function(a){ var v=outcomes[a]; if(v!==null&&(best===null||v<outcomes[best])) best=a; });
+    truth = best && outcomes[best] < base*0.95 ? best : "STOP_TUNING"; }
+  var goods = t.good_moves || (truth?[truth]:null);
+  var correct = goods ? goods.indexOf(d.choice)>=0 : null;
+  var html='<h2>Decision <small>'+(t.telemetry_source==="measured now"?"job was just run on this machine":"saved example")+'</small></h2>'+
+    '<div class="decision-head"><span class="choice">'+esc(d.choice)+'</span>'+
+    '<span class="pill '+(auto?"auto":"esc")+'">'+(auto?"auto-run":"escalate to engineer")+'</span>'+
+    (correct===null?"":'<span class="pill '+(correct?"ok":"miss")+'">'+(correct?(goods.length>1?"one of "+goods.length+" best moves":"the best move"):"best: "+esc(goods.join(", ")))+'</span>')+'</div>'+
+    '<p class="faint" style="margin:6px 0 0;font-size:12.5px">'+esc(S.data.action_help[d.choice]||"")+'</p>'+
+    '<div class="conf-track" aria-hidden="true"><div class="conf-fill" style="width:'+(d.confidence*100)+'%;background:'+(auto?"var(--good)":"var(--warn)")+'"></div>'+
+    '<div class="conf-mark" style="left:calc('+(S.threshold*100)+'% - 1px)"></div></div>'+
+    '<div class="meta"><span>confidence <b>'+pct(d.confidence)+'</b></span><span>stop prob. <b>'+pct(d.stop_probability)+'</b></span>'+
+    '<span>expected saving <b>'+pct(d.expected_improvement)+'</b></span><span>now <b>'+ms(base)+'</b></span></div>'+
+    '<div class="slider" style="margin-top:10px"><label for="thr">threshold</label><input id="thr" type="range" min="0.3" max="0.99" step="0.01" value="'+S.threshold+'"><span class="num">'+S.threshold.toFixed(2)+'</span></div>'+
+    '<div class="bars" style="margin-top:12px">'+probs.map(function(p){
+      var col=p[0]===d.choice?"var(--pos)":(p[0]===truth?"var(--good)":"var(--faint)");
+      return '<div class="bar-row"><div class="l" title="'+p[0]+'">'+p[0]+'</div><div class="track"><div class="fill" style="left:0;width:'+(p[1]*100)+'%;background:'+col+'"></div></div><div class="v">'+pct(p[1])+'</div></div>'; }).join("")+'</div>';
+  if(outcomes){
+    var reach=t.reachable||null;
+    function eff(r){ if(r[1]===null) return Infinity; if(r[0]==="STOP_TUNING") return base;
+      return r[1]<base*0.95 ? (reach&&r[2]!==null?Math.min(r[2],r[1]):r[1]) : base*1.02; }
+    var rows=Object.keys(outcomes).map(function(a){return [a,outcomes[a],reach?reach[a]:null];}); rows.push(["STOP_TUNING",base,null]);
+    rows.sort(function(a,b){ return eff(a)-eff(b) || (a[1]===null)-(b[1]===null) || a[1]-b[1]; });
+    var bestNext=Infinity; rows.forEach(function(r){ if(r[1]!==null) bestNext=Math.min(bestNext,r[1]); });
+    html+='<h2 style="margin-top:16px">What each action really does <small>measured on this machine</small></h2><div class="tbl-scroll"><table><thead><tr><th>action</th><th class="r">next run</th><th class="r">change</th>'+(reach?'<th class="r">best reachable</th>':'')+'</tr></thead><tbody>'+
+      rows.map(function(r){ var cls=(r[0]===d.choice?"hl-pick ":"")+(r[0]===truth?"hl-best":"");
+        var name='<td class="mono">'+r[0]+(r[0]===d.choice?' <span class="faint">← model</span>':"")+'</td>';
+        if(r[1]===null) return '<tr class="'+cls+'">'+name+'<td class="r" style="color:var(--bad)">fails</td><td class="r faint">error</td>'+(reach?'<td></td>':'')+'</tr>';
+        var ch=(r[1]-base)/base, rch=reach&&r[1]<base*0.95&&r[2]!==null?Math.min(r[2],r[1]):(r[0]==="STOP_TUNING"?base:null);
+        return '<tr class="'+cls+'">'+name+'<td class="r">'+ms(r[1])+'</td><td class="r" style="color:'+(ch<-0.05?"var(--good)":ch>0.05?"var(--bad)":"var(--muted)")+'">'+(ch>0?"+":"")+pct(ch)+'</td>'+
+          (reach?'<td class="r">'+(rch!==null?ms(rch):'<span class="faint">no gain</span>')+'</td>':'')+'</tr>'; }).join("")+
+      '</tbody></table></div>'+(reach?'<p class="faint" style="font-size:12px;margin:8px 0 0">"Best reachable" = fastest runtime you can get to from that move by further clearly-faster measured moves. The highlighted row is the best first move, which is not always the one with the biggest immediate gain.</p>':'');
+  } else if(t.telemetry_source){ html+='<p class="faint" style="font-size:12px;margin:12px 0 0">This size wasn\'t part of the collected grid, so there is no measured outcome table. Use "Tune it for real" to try the changes.</p>'; }
+  $("decision").innerHTML=html;
+  $("thr").addEventListener("input",function(e){ S.threshold=parseFloat(e.target.value); renderDecision(); $("thr").focus(); });
+}
+function renderExplorer(){ renderMap(); renderLayer(); renderDecision();
+  $("modeBadge").textContent=S.live?"live: runs on this machine":"saved examples"; $("modeBadge").className="mode"+(S.live?" live":""); }
+
+/* ---------------- playground ---------------- */
+function post(url,body){
+  return fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
+    .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||("HTTP "+r.status)); return j; }); });
+}
+function renderPlayground(){
+  var p=$("playground"), d=S.data;
+  if(!S.live){
+    p.innerHTML='<h2>Run your own job <small>needs the local server</small></h2>'+
+      '<p class="muted" style="margin:0">This page shows '+d.traces.length+' saved examples. To pick a kernel, size and config and have it run on the machine and tuned for real, start the server in the project folder and open the page it prints:</p>'+
+      '<div class="cmd"><code>python -m hpc_ds1 serve</code><button class="btn ghost" type="button" id="copyServe">Copy</button><span class="faint">then open http://127.0.0.1:8765</span></div>';
+    $("copyServe").addEventListener("click",function(){ copyText("python -m hpc_ds1 serve",$("copyServe")); });
+    return;
+  }
+  function opts(list,sel,lab){ return list.map(function(v){return '<option value="'+esc(v)+'"'+(String(v)===String(sel)?" selected":"")+'>'+esc(lab?lab(v):v)+'</option>';}).join(""); }
+  var hasGpu=!!S.liveInfo.hardware.gpu_model;
+  p.innerHTML='<h2>Run your own job <small>executes on '+esc(S.liveInfo.hardware.cpu_threads)+'-thread CPU'+(hasGpu?" + "+esc(S.liveInfo.hardware.gpu_model):"")+'</small></h2>'+
+    '<form id="pgForm"><div class="form-grid">'+
+    '<label class="field" for="f-wl">kernel<select id="f-wl">'+opts(Object.keys(d.workloads),"stencil",function(w){return d.workloads[w].display_name;})+'</select></label>'+
+    '<label class="field" for="f-sz">size<select id="f-sz"></select></label>'+
+    '<label class="field" for="f-r">ranks<select id="f-r">'+opts([1,2,4,8],1)+'</select></label>'+
+    '<label class="field" for="f-t">threads per rank<select id="f-t">'+opts([1,2,4,8,16],1)+'</select></label>'+
+    '<label class="field check" for="f-gpu"><input type="checkbox" id="f-gpu"'+(hasGpu?"":" disabled")+'> on the GPU</label>'+
+    '<label class="field check" for="f-bf"><input type="checkbox" id="f-bf"> bf16</label>'+
+    '</div><div class="actions-row"><button class="btn" type="submit" id="runBtn">Run it &amp; ask the model</button>'+
+    '<button class="btn ghost" type="button" id="tuneBtn">Tune it for real</button><span class="running" id="pgBusy" aria-live="polite"></span><span class="err" id="pgErr" role="alert"></span></div></form><div id="tuneOut"></div>';
+  function syncSizes(){ var w=$("f-wl").value, k=d.workloads[w];
+    $("f-sz").innerHTML=opts(k.sizes,k.test_size,function(v){ return sizeStr(w,v)+(String(v)===String(k.test_size)?" (held out)":""); }); }
+  function syncGpu(){ $("f-r").disabled=$("f-gpu").checked; }
+  $("f-wl").addEventListener("change",syncSizes); $("f-gpu").addEventListener("change",syncGpu); syncSizes();
+  function body(){ var r=parseInt($("f-r").value,10), t=parseInt($("f-t").value,10);
+    return {workload:$("f-wl").value, size:parseInt($("f-sz").value,10),
+      config:{ranks:$("f-gpu").checked?1:r, threads:t, gpu:$("f-gpu").checked, precision:$("f-bf").checked?"bf16":"fp32"}, threshold:S.threshold}; }
+  function busy(on,msg){ $("runBtn").disabled=on; $("tuneBtn").disabled=on; $("pgBusy").textContent=on?msg:""; if(on) $("pgErr").textContent=""; }
+  $("pgForm").addEventListener("submit",function(e){ e.preventDefault(); var b=body();
+    if(b.config.ranks*b.config.threads>32){ $("pgErr").textContent="ranks × threads can be at most 32 on this machine."; return; }
+    busy(true,"running the job…");
+    post("/v1/trace",b).then(function(r){
+      S.liveTrace=normalizeTrace({workload:b.workload, size:b.size, state:r.state, decision:r.decision, layers:r.layers,
+        outcomes:r.outcomes, reachable:r.reachable, good_moves:r.good_moves, label:r.label, telemetry_source:r.telemetry_source});
+      renderPicker(); renderExplorer();
+    }).catch(function(err){ $("pgErr").textContent=err.message; }).then(function(){ busy(false); });
+  });
+  $("tuneBtn").addEventListener("click",function(){ var b=body(); b.threshold=0; b.max_steps=8;
+    busy(true,"tuning: each step runs the job for real…");
+    post("/v1/tune",b).then(renderTune).catch(function(err){ $("pgErr").textContent=err.message; }).then(function(){ busy(false); });
+  });
+}
+function renderTune(r){
+  var why={model_stop:"model said stop",no_improvement:"last suggestion wasn't faster",action_failed:"last suggestion failed",escalation_declined:"escalation declined",max_steps:"hit step limit"};
+  $("tuneOut").innerHTML='<h2 style="margin-top:16px">Tuning session <small>'+r.experiments+' real runs · ×'+r.speedup.toFixed(2)+' faster · '+(why[r.stopped_reason]||r.stopped_reason)+'</small></h2>'+
+    '<div class="tbl-scroll"><table><thead><tr><th>step</th><th>action</th><th class="r">confidence</th><th class="r">before</th><th class="r">after</th><th>result</th></tr></thead><tbody>'+
+    r.steps.map(function(s){ var res=s.action==="STOP_TUNING"?"done":s.accepted?"kept":(s.note||"slower, reverted");
+      return '<tr><td class="num">'+(s.step+1)+'</td><td class="mono">'+esc(s.action)+'</td><td class="r">'+pct(s.confidence)+'</td><td class="r">'+ms(s.runtime_before)+'</td><td class="r">'+ms(s.runtime_after)+'</td><td>'+esc(res)+'</td></tr>'; }).join("")+
+    '</tbody></table></div><p class="faint" style="font-size:12px;margin:8px 0 0">Started at '+esc(cfgStr(r.initial_config))+', ended at <b>'+esc(cfgStr(r.final_config))+'</b>.</p>';
+}
+function copyText(text,btn){
+  function done(){ var o=btn.textContent; btn.textContent="Copied"; setTimeout(function(){btn.textContent=o;},1200); }
+  function fallback(){ var pre=$("codeBlock"); var r=document.createRange(); r.selectNodeContents(pre); var s=getSelection(); s.removeAllRanges(); s.addRange(r); }
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done,fallback); else fallback();
+}
+
+/* ---------------- data tab ---------------- */
+function renderData(){
+  var d=S.data, ds=d.dataset, hw=d.hardware;
+  $("hwNote").textContent=hw.name+" · "+hw.cpu_cores+"C/"+hw.cpu_threads+"T · "+hw.ram_gb+" GB · "+(hw.gpu_model||"no GPU");
+  var k=[[ds.measurements.toLocaleString(),"real runs measured"],[ds.ok_and_correct.toLocaleString(),"ran and gave the right answer"],
+    [ds.failed_or_wrong.toLocaleString(),"failed or wrong (excluded)"],[Object.keys(d.landscapes).length,"problems ("+Object.keys(d.workloads).length+" kernels × "+d.workloads[Object.keys(d.workloads)[0]].sizes.length+" sizes)"],
+    [ds.states.toLocaleString(),"labelled tuning states"],[ds.test.toLocaleString(),"test states (held-out sizes)"]];
+  $("dataKpis").innerHTML=k.map(function(x){return '<div class="kpi"><div class="v">'+x[0]+'</div><div class="k">'+x[1]+'</div></div>';}).join("");
+  $("kernelTable").innerHTML='<table><thead><tr><th>kernel</th><th>character</th><th>sizes measured</th><th class="r">fastest config (largest size)</th><th class="r">speedup over 1 rank × 1 thread</th></tr></thead><tbody>'+
+    Object.keys(d.workloads).map(function(w){ var k=d.workloads[w], big=k.sizes[k.sizes.length-1], L=d.landscapes[w+":"+big]||[];
+      var best=null, base=null; L.forEach(function(e){ if(!best||e.runtime<best.runtime) best=e; if(!e.config.gpu&&e.config.ranks===1&&e.config.threads===1&&e.config.precision==="fp32") base=e; });
+      return '<tr><td>'+esc(k.display_name)+'</td><td class="muted">'+esc(k.character)+'</td><td class="mono">'+k.sizes.map(function(s){return s===k.test_size?'<u title="held out for testing">'+Number(s).toLocaleString()+'</u>':Number(s).toLocaleString();}).join(", ")+'</td>'+
+        '<td class="r">'+(best?esc(cfgStr(best.config))+' · '+ms(best.runtime):"–")+'</td><td class="r">'+(best&&base?"×"+(base.runtime/best.runtime).toFixed(1):"–")+'</td></tr>'; }).join("")+
+    '</tbody></table><p class="faint" style="font-size:12px;margin:8px 0 0">Underlined sizes were held out: the model never saw any run of them during training.</p>';
+  var keys=Object.keys(d.landscapes).sort();
+  $("landSelect").innerHTML=keys.map(function(k){ var p=k.split(":"); return '<option value="'+esc(k)+'">'+esc(d.workloads[p[0]].display_name+" · "+sizeStr(p[0],+p[1]))+'</option>'; }).join("");
+  $("landSelect").value=keys.filter(function(k){return k.indexOf("gemm:")===0;}).pop()||keys[0];
+  $("landSelect").addEventListener("change",drawLandscape); drawLandscape();
+  var fails=ds.failures||[];
+  $("failTable").innerHTML=fails.length?'<table><thead><tr><th>problem</th><th>config</th><th>what happened</th></tr></thead><tbody>'+
+    fails.map(function(f){ return '<tr><td class="mono">'+esc(f.problem)+'</td><td>'+esc(cfgStr(f.config))+'</td><td class="muted">'+esc(f.reason)+'</td></tr>'; }).join("")+'</tbody></table>':'<p class="muted">None.</p>';
+}
+function drawLandscape(){
+  var key=$("landSelect").value, L=S.data.landscapes[key]||[], best=Infinity, map={};
+  L.forEach(function(e){ best=Math.min(best,e.runtime); map[[e.config.ranks,e.config.threads,e.config.gpu,e.config.precision].join("|")]=e.runtime; });
+  var worst=0; L.forEach(function(e){ worst=Math.max(worst,e.runtime/best); });
+  function cell(r,t,g,p){ var k=[r,t,g,p].join("|"), v=map[k];
+    var inSpace = g ? true : r*t<=32;
+    if(!inSpace) return '<i class="none"></i>';
+    if(v===undefined) return '<i class="fail" title="failed or wrong answer">✕</i>';
+    var x=Math.log(v/best)/Math.log(Math.max(worst,1.0001)), col = x<0.5?mix(C_GOOD,C_MID,x*2):mix(C_MID,C_BAD,(x-0.5)*2);
+    return '<i class="'+(v===best?"best":"")+'" style="background:'+col+'" title="'+cfgStr({ranks:r,threads:t,gpu:g,precision:p})+': '+ms(v)+'">'+ms(v).replace(" ","")+'</i>'; }
+  var T=[1,2,4,8,16], R=[1,2,4,8], html="";
+  ["fp32","bf16"].forEach(function(p){
+    html+='<div class="land-block"><div class="t">CPU · '+p+' (rows = ranks, cols = threads)</div><div class="land" style="grid-template-columns:42px repeat(5,auto)"><span></span>'+T.map(function(t){return '<span>'+t+'T</span>';}).join("");
+    R.forEach(function(r){ html+='<span>'+r+'R</span>'+T.map(function(t){return cell(r,t,false,p);}).join(""); });
+    html+='</div></div>';
+  });
+  if(S.data.hardware.gpu_model){
+    html+='<div class="land-block"><div class="t">GPU (host threads)</div><div class="land" style="grid-template-columns:42px repeat(5,auto)"><span></span>'+T.map(function(t){return '<span>'+t+'T</span>';}).join("");
+    ["fp32","bf16"].forEach(function(p){ html+='<span>'+p+'</span>'+T.map(function(t){return cell(1,t,true,p);}).join(""); });
+    html+='</div></div>';
+  }
+  $("landscape").innerHTML=html;
+  $("landNote").textContent="best "+ms(best)+" · worst ×"+worst.toFixed(0)+" slower · "+L.length+" configs ran correctly";
+}
+
+/* ---------------- use it ---------------- */
+function hl(code){
+  return esc(code).replace(/(#[^\n]*)/g,'<span class="k-cm">$1</span>')
+    .replace(/(&quot;[^&\n]*?&quot;|'[^'\n]*')/g,'<span class="k-str">$1</span>')
+    .replace(/\b(import|from|def|return|if|else|for|in|print|None|True|False|class)\b/g,'<span class="k-kw">$1</span>');
+}
+function renderUse(){
+  var d=S.data, ex=d.traces[0], c=ex.state.config;
+  var lat=d.traces.map(function(t){return t.decision.latency_ms;}).sort(function(a,b){return a-b;});
+  $("latencyNote").textContent="decision latency ~"+lat[Math.floor(lat.length/2)].toFixed(1)+" ms (incl. layer tracing)";
+  var resp=JSON.stringify({choice:ex.decision.choice,confidence:ex.decision.confidence,probabilities:ex.decision.probabilities,
+    should_escalate:ex.decision.should_escalate,stop_probability:ex.decision.stop_probability,expected_improvement:ex.decision.expected_improvement,
+    telemetry_source:"measured now"},null,2);
+  var cfg='{"ranks": '+c.ranks+', "threads": '+c.threads+', "gpu": '+(c.gpu?"True":"False")+', "precision": "'+c.precision+'"}';
+  var snippets=[
+    ["Python","import hpc_ds1\n\nmodel = hpc_ds1.load()                       # model/hpc_ds1.pt\n\n# Run the job once on this machine and measure it\nstate = model.observe(\""+ex.workload+"\", "+ex.size+",\n                      "+cfg+")\n\nd = model.decide(state)\nif d.should_escalate:                         # confidence below 0.85\n    ask_engineer(d.choice, d.confidence, d.alternatives)\nelse:\n    apply(d.choice)\n\nmodel.close()                                 # stops the worker ranks",
+      "Already have telemetry from your own run? Build the state with hpc_ds1.build_state(hardware, kernel, size, config, telemetry) and skip observe()."],
+    ["Restrict options","# Only consider the moves your site allows, like Jev's options list.\nd = model.decide(state, [\"USE_GPU\", \"ADD_THREADS\", \"STOP_TUNING\"])\n\nd.choice              # best of those three\nd.probabilities       # renormalised over the three\nd.ignored_candidates  # any you passed that can't apply to this config",
+      "Candidates that can't apply (e.g. ADD_RANKS when the job is already on the GPU) are dropped and listed in ignored_candidates."],
+    ["Tune for real","def approve(action, confidence, state):\n    return input(f\"Run {action}? model is {confidence:.0%} sure [y/N] \") == \"y\"\n\nresult = model.tune(\"stencil\", 192,\n                    {\"ranks\": 1, \"threads\": 1, \"gpu\": False, \"precision\": \"fp32\"},\n                    threshold=0.85, on_escalate=approve)\n\nprint(result.speedup, result.experiments, result.final_config)\nfor step in result.steps:\n    print(step.action, step.runtime_before, step.runtime_after, step.accepted)",
+      "Every step launches the kernel on this machine, checks the answer against fp32, and keeps the change only if it was really faster. To drive your own jobs, pass runner= any object with a .hardware dict that maps a config to measured telemetry."],
+    ["HTTP","# python -m hpc_ds1 serve   (stdlib server, http://127.0.0.1:8765)\ncurl -s http://127.0.0.1:8765/v1/decide \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"workload\": \""+ex.workload+"\", \"size\": "+ex.size+",\n       \"config\": {\"ranks\": "+c.ranks+", \"threads\": "+c.threads+", \"gpu\": "+c.gpu+", \"precision\": \""+c.precision+"\"}}'\n\n# response (abridged)\n"+resp,
+      "Also: POST /v1/trace (every layer, what this page shows), /v1/tune (real tuning session), /v1/decide_batch; GET /v1/health, /v1/schema, /v1/catalog."],
+    ["CLI","python -m hpc_ds1 decide --workload gemm --size 2048 --ranks 2 --threads 4\n\npython -m hpc_ds1 tune --workload stencil --size 192\n\npython -m hpc_ds1 info\n\n# rebuild everything from scratch on your own machine\npython scripts/collect.py && python scripts/train.py && python scripts/generalization.py",
+      "Kernels: "+Object.keys(d.workloads).join(", ")+". Sizes and units: python -m hpc_ds1 info."]
+  ];
+  var cur=0;
+  function show(i){ cur=i; $("codeBlock").innerHTML=hl(snippets[i][1]); $("codeNote").textContent=snippets[i][2];
+    $("codeTabs").querySelectorAll("button").forEach(function(b,j){ b.setAttribute("aria-selected",j===i?"true":"false"); }); }
+  $("codeTabs").innerHTML=snippets.map(function(s){return '<button type="button" role="tab">'+esc(s[0])+'</button>';}).join("");
+  $("codeTabs").querySelectorAll("button").forEach(function(b,i){ b.addEventListener("click",function(){show(i);}); });
+  $("copyBtn").addEventListener("click",function(){ copyText(snippets[cur][1],$("copyBtn")); });
+  show(0);
+}
+
+/* ---------------- eval ---------------- */
+function axisChart(o){
+  var W=420,H=220,P={l:40,r:12,t:10,b:28}, w=W-P.l-P.r, h=H-P.t-P.b;
+  function x(v){ return P.l+(v-o.x0)/(o.x1-o.x0)*w; } function y(v){ return P.t+(1-(v-o.y0)/(o.y1-o.y0))*h; }
+  var g="";
+  o.yt.forEach(function(v){ g+='<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="#ececef"/><text x="'+(P.l-6)+'" y="'+(y(v)+3)+'" text-anchor="end">'+o.yf(v)+'</text>'; });
+  o.xt.forEach(function(v){ g+='<text x="'+x(v)+'" y="'+(H-12)+'" text-anchor="middle">'+o.xf(v)+'</text>'; });
+  var s=o.series.map(function(sr){ var pts=sr.pts.filter(function(p){return p[1]!==null&&p[1]!==undefined;});
+    var path=pts.map(function(p,i){return (i?"L":"M")+x(p[0]).toFixed(1)+","+y(p[1]).toFixed(1);}).join("");
+    return '<path d="'+path+'" fill="none" stroke="'+sr.color+'" stroke-width="'+(sr.dash?1.3:2)+'"'+(sr.dash?' stroke-dasharray="4 4"':'')+'/>'+
+      (sr.dots?pts.map(function(p){return '<circle cx="'+x(p[0])+'" cy="'+y(p[1])+'" r="'+(p[2]||3)+'" fill="'+sr.color+'"/>';}).join(""):""); }).join("");
+  var mark=o.mark!==undefined?'<line x1="'+x(o.mark)+'" x2="'+x(o.mark)+'" y1="'+P.t+'" y2="'+(H-P.b)+'" stroke="#1b1b1f" stroke-dasharray="2 3"/><text x="'+(x(o.mark)-4)+'" y="'+(H-P.b-6)+'" text-anchor="end" style="fill:#1b1b1f">'+o.markLabel+'</text>':"";
+  return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(o.label)+'">'+g+mark+s+(o.xl?'<text x="'+(P.l+w/2)+'" y="'+H+'" text-anchor="middle">'+o.xl+'</text>':"")+'</svg>';
+}
+function barCell(v,top,hiColor){ return '<div style="display:flex;gap:8px;align-items:center"><div class="track" style="flex:1;min-width:80px"><div class="fill" style="left:0;width:'+(v/top*100)+'%;background:'+hiColor+'"></div></div>'; }
+function renderEval(){
+  var d=S.data, m=d.metrics, rp=d.replay;
+  $("loopNote").textContent=m.test_problems.length+" held-out problems · "+rp.summary[0].sessions+" sessions per policy · up to "+rp.max_steps+" steps";
+  $("loopTable").innerHTML='<table><thead><tr><th>policy</th><th>% of best config reached</th><th class="r">within 10% of best</th><th class="r">speedup</th><th class="r">runs / session</th></tr></thead><tbody>'+
+    rp.summary.map(function(s){ var mine=s.policy.indexOf("HPC-DS1")===0;
+      return '<tr><td>'+esc(s.policy)+'</td><td>'+barCell(s.pct_of_best_config,100,mine?"var(--pos)":"var(--faint)")+'<span class="num">'+s.pct_of_best_config.toFixed(1)+'%</span></div></td><td class="r">'+s.sessions_within_10pct_of_best.toFixed(0)+'%</td><td class="r">×'+s.geo_mean_speedup.toFixed(2)+'</td><td class="r">'+s.mean_experiments.toFixed(1)+'</td></tr>'; }).join("")+'</tbody></table>'+
+    '<h2 style="margin-top:16px">Per held-out problem <small>% of best config reached</small></h2><table><thead><tr><th>problem</th>'+rp.summary.map(function(s){return '<th class="r">'+esc(s.policy.replace(" (autonomous)","").replace(" (tries all neighbours)",""))+'</th>';}).join("")+'</tr></thead><tbody>'+
+    rp.per_problem.map(function(p){ return '<tr><td>'+esc(d.workloads[p.workload].display_name+" · "+sizeStr(p.workload,p.size))+'</td>'+rp.summary.map(function(s){return '<td class="r">'+p[s.policy].toFixed(1)+'%</td>';}).join("")+'</tr>'; }).join("")+'</tbody></table>';
+  if(d.live&&d.live.length){ $("livePanel").hidden=false;
+    $("liveTable").innerHTML='<table><thead><tr><th>problem</th><th>started at</th><th>ended at</th><th class="r">speedup</th><th class="r">real runs</th><th class="r">vs best known config (re-run now)</th><th>stopped because</th></tr></thead><tbody>'+
+      d.live.map(function(r){ return '<tr><td>'+esc(d.workloads[r.workload].display_name+" · "+sizeStr(r.workload,r.size))+'</td><td>'+esc(cfgStr(r.initial_config))+'</td><td><b>'+esc(cfgStr(r.final_config))+'</b></td><td class="r">×'+r.speedup.toFixed(2)+'</td><td class="r">'+r.experiments+'</td><td class="r">'+r.pct_of_best_measured.toFixed(0)+'%</td><td class="muted">'+esc(r.stopped_reason.replace(/_/g," "))+'</td></tr>'; }).join("")+'</tbody></table>'; }
+
+  var ec=m.escalation_curve.filter(function(e){return e.threshold>=0.3;}), lo=Math.min.apply(null,ec.map(function(e){return Math.min(e.coverage,e.auto_accuracy===null?1:e.auto_accuracy);}));
+  var y0=Math.max(0,Math.floor(lo*10)/10-0.1);
+  $("chartEscalation").innerHTML=axisChart({label:"Share of decisions auto-run and their accuracy by threshold",x0:0.3,x1:1,y0:y0,y1:1,
+    xt:[0.3,0.5,0.7,0.85,1],xf:function(v){return v.toFixed(2);},yt:[y0,(y0+1)/2,1],yf:function(v){return Math.round(v*100)+"%";},mark:0.85,markLabel:"0.85",xl:"confidence threshold",
+    series:[{color:"#2f6fe4",dots:true,pts:ec.map(function(e){return [e.threshold,e.coverage];})},{color:"#1a9e5c",dots:true,pts:ec.map(function(e){return [e.threshold,e.auto_accuracy];})}]});
+  var rel=m.reliability, mc=Math.max.apply(null,rel.map(function(r){return r.count;}));
+  $("chartReliability").innerHTML=axisChart({label:"Reliability diagram",x0:0,x1:1,y0:0,y1:1,xt:[0,0.25,0.5,0.75,1],xf:function(v){return v.toFixed(2);},yt:[0,0.5,1],yf:function(v){return Math.round(v*100)+"%";},xl:"model confidence",
+    series:[{color:"#8a8a93",dash:true,pts:[[0,0],[1,1]]},{color:"#2f6fe4",dots:true,pts:rel.map(function(r){return [r.confidence,r.accuracy,2.5+6*Math.sqrt(r.count/mc)];})}]});
+  $("eceNote").textContent="ECE "+m.ece_raw.toFixed(3)+" raw → "+m.ece.toFixed(3)+" after temperature "+m.temperature+" · dot size = states";
+
+  $("decNote").textContent=m.test_states+" states from held-out sizes · a best move = can still reach within 2% of the best runtime";
+  var rows=[["HPC-DS1",m.accuracy,m.regret_model],["Rules of thumb",m.rules_accuracy,m.regret_rules],["Always \""+m.majority_class+"\"",m.majority_accuracy,null]];
+  $("decTable").innerHTML='<table><thead><tr><th>policy</th><th class="r">picks a best move</th><th class="r">avg. regret</th><th class="r">made it slower</th><th class="r">picked a failing config</th></tr></thead><tbody>'+
+    rows.map(function(r){ return '<tr><td>'+esc(r[0])+'</td><td class="r">'+pct(r[1])+'</td><td class="r">'+(r[2]?r[2].mean_regret_pct.toFixed(1)+"%":"–")+'</td><td class="r">'+(r[2]?r[2].made_slower_pct.toFixed(1)+"%":"–")+'</td><td class="r">'+(r[2]?r[2].picked_failing_config_pct.toFixed(1)+"%":"–")+'</td></tr>'; }).join("")+'</tbody></table>';
+  $("byWorkload").innerHTML=Object.keys(m.per_workload).map(function(k){ var v=m.per_workload[k];
+    return '<div class="bar-row"><div class="l">'+esc(k)+'</div><div class="track"><div class="fill" style="left:0;width:'+(v.accuracy*100)+'%;background:var(--pos)"></div></div><div class="v">'+pct(v.accuracy)+' <span class="faint">n='+v.total+'</span></div></div>'; }).join("");
+
+  var A=d.actions, cm=m.confusion, idx=A.map(function(_,i){return i;}).filter(function(i){ return cm[i].reduce(function(a,b){return a+b;},0)+cm.reduce(function(a,r){return a+r[i];},0)>0; });
+  var ab=function(a){ return a.replace("_TUNING","").replace("REMOVE_","−").replace("ADD_","+").replace("USE_",""); };
+  var html='<div class="confusion" style="grid-template-columns:62px repeat('+idx.length+',minmax(28px,1fr));min-width:'+(70+idx.length*32)+'px"><span></span>'+idx.map(function(j){return '<span style="justify-content:center" title="predicted '+A[j]+'">'+ab(A[j])+'</span>';}).join("");
+  idx.forEach(function(i){ var tot=cm[i].reduce(function(a,b){return a+b;},0)||1;
+    html+='<span title="'+A[i]+'">'+ab(A[i])+'</span>'+idx.map(function(j){ var v=cm[i][j], f=v/tot;
+      return '<i style="background:'+(v===0?"#f7f7f8":i===j?seqColor(0.15+0.85*f):mix(C_BG,C_BAD,Math.min(1,0.25+f*2)))+';color:'+(i===j&&f>0.5?"#ffffff":"#33333a")+'" title="'+A[i]+' → '+A[j]+': '+v+'">'+(v||"")+'</i>'; }).join(""); });
+  $("confusion").innerHTML=html+'</div>';
+
+  $("sweep").innerHTML='<table><thead><tr><th>size</th><th class="r">params</th><th class="r">val loss</th><th class="r">test accuracy</th><th class="r">epochs</th><th class="r">train time</th></tr></thead><tbody>'+
+    d.size_sweep.map(function(s){ var ch=s.size===d.model.size;
+      return '<tr'+(ch?' class="hl-best"':'')+'><td>'+s.size+(ch?' <span class="faint">(used)</span>':'')+'</td><td class="r">'+human(s.parameters)+'</td><td class="r">'+s.val_loss.toFixed(4)+'</td><td class="r">'+pct(s.test_acc)+'</td><td class="r">'+s.epochs_run+'</td><td class="r">'+s.train_time_sec+'s</td></tr>'; }).join("")+'</tbody></table>';
+  var tc=d.training_curve, mx=Math.max.apply(null,tc.map(function(e){return Math.max(e.train_loss,e.val_loss);}));
+  $("chartTrain").innerHTML=axisChart({label:"Training curve",x0:1,x1:tc.length,y0:0,y1:1,xt:[1,Math.round(tc.length/2),tc.length],xf:function(v){return "ep "+v;},
+    yt:[0,0.5,1],yf:function(v){return v===1?mx.toFixed(2)+"/100%":v===0?"0":"";},
+    series:[{color:"#2f6fe4",pts:tc.map(function(e){return [e.epoch,e.train_loss/mx];})},{color:"#c27c0e",pts:tc.map(function(e){return [e.epoch,e.val_loss/mx];})},{color:"#1a9e5c",pts:tc.map(function(e){return [e.epoch,e.val_acc];})}]});
+  renderGeneralization();
+}
+function renderGeneralization(){
+  var g=S.data.generalization; if(!g) return;
+  function pair(a,b){ return '<td class="r"><span style="color:'+(a>b+1e-9?"var(--good)":a<b-1e-9?"var(--bad)":"var(--text)")+'">'+pct(a)+'</span> <span class="faint">vs '+pct(b)+'</span></td>'; }
+  if(g.leave_one_kernel_out){ $("genPanel").hidden=false;
+    $("genKernel").innerHTML='<table><thead><tr><th>held-out kernel</th><th class="r">states</th><th class="r">picks a best move <span class="faint">(model vs rules)</span></th><th class="r">avg. regret</th><th class="r">% of best config reached</th><th class="r">calibration err.</th><th class="r">auto-run @0.85</th></tr></thead><tbody>'+
+      g.leave_one_kernel_out.map(function(r){ return '<tr><td>'+esc(S.data.workloads[r.held_out].display_name)+'</td><td class="r">'+r.test_states+'</td>'+pair(r.accuracy,r.rules_accuracy)+
+        '<td class="r">'+r.regret.mean_regret_pct.toFixed(1)+'% <span class="faint">vs '+r.regret_rules.mean_regret_pct.toFixed(1)+'%</span></td>'+pair(r.replay.model_pct_of_best/100,r.replay.rules_pct_of_best/100)+
+        '<td class="r" style="color:'+(r.ece>0.12?"var(--warn)":"var(--text)")+'">'+r.ece.toFixed(3)+'</td><td class="r">'+pct(r.auto_run_at_085,0)+(r.auto_run_accuracy!==null?' <span class="faint">@ '+pct(r.auto_run_accuracy,0)+'</span>':'')+'</td></tr>'; }).join("")+'</tbody></table>'; }
+  if(g.ablations){ $("ablPanel").hidden=false; var full=g.ablations[0];
+    $("ablation").innerHTML='<table><thead><tr><th>variant</th><th>picks a best move</th><th class="r">change</th><th class="r">avg. regret</th><th class="r">auto-run @0.85</th></tr></thead><tbody>'+
+      g.ablations.map(function(a){ var dd=a.accuracy-full.accuracy;
+        return '<tr><td>'+esc(a.variant)+'</td><td>'+barCell(a.accuracy,1,a===full?"var(--pos)":"var(--faint)")+'<span class="num">'+pct(a.accuracy)+'</span></div></td><td class="r" style="color:'+(dd<-0.01?"var(--bad)":"var(--muted)")+'">'+(a===full?"–":(dd>0?"+":"")+(100*dd).toFixed(1)+" pts")+'</td><td class="r">'+a.regret.mean_regret_pct.toFixed(1)+'%</td><td class="r">'+pct(a.auto_run_at_085,0)+'</td></tr>'; }).join("")+'</tbody></table>'; }
+}
+
+/* ---------------- boot ---------------- */
+function probeLive(){
+  if(!/^https?:$/.test(location.protocol) || !/^(127\.0\.0\.1|localhost|\[::1\])$/.test(location.hostname)) return Promise.resolve(null);
+  return Promise.all([fetch("/v1/health").then(function(r){return r.ok?r.json():null;}), fetch("/v1/schema").then(function(r){return r.ok?r.json():null;})])
+    .then(function(a){ return a[0]&&a[1]?{health:a[0],hardware:a[1].hardware}:null; }).catch(function(){ return null; });
+}
+function boot(data){
+  S.data=data; data.traces.forEach(normalizeTrace);
+  for(var i=0;i<data.traces.length;i++){ if(data.traces[i].correct && data.traces[i].decision.confidence>=0.85){ S.idx=i; break; } }
+  renderChips(); renderPicker(); renderExplorer(); renderPlayground(); renderUse();
+  var h=(location.hash||"").replace("#",""); if(["data","use","eval"].indexOf(h)>=0) showTab(h);
+  probeLive().then(function(info){ if(info){ S.live=true; S.liveInfo=info; renderPlayground(); renderExplorer(); } });
+}
+fetch("model_internals.json").then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }).then(boot).catch(function(err){
+  $("dataNote").textContent="Could not load model_internals.json ("+err.message+"). Run scripts/train.py to export it.";
+});
+})();
+</script>

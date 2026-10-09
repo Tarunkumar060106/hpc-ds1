@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HPC-DS1 Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* =====================================================================
+   HPC-DS1 facility console. One page, hash-routed. Talks only to the
+   local server (hpc-ds1 serve); every number on screen comes from it.
+   ===================================================================== */
+:root {
+  --bg: #ffffff; --side: #fafafa; --line: #e7e7e9; --line2: #f1f1f3;
+  --ink: #1b1b1f; --mid: #55555c; --soft: #8a8a93; --chip: #f3f3f5;
+  --acc: #2f6fe4; --ok: #1a9e5c; --warn: #c27c0e; --bad: #d1442f;
+  --ok-bg: #e5f6ec; --warn-bg: #fdf3e0; --bad-bg: #fde9e5; --acc-bg: #e8effc;
+  --code-bg: #f7f7f8;
+  --sans: 'IBM Plex Sans', system-ui, sans-serif; --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; }
+a { color: var(--acc); }
+code, .mono { font-family: var(--mono); font-size: 13px; }
+.app { display: grid; grid-template-columns: 236px 1fr; height: 100vh; }
+
+/* ---------- sidebar ---------- */
+.side { background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 18px 12px; overflow: auto; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: .02em; padding: 0 8px 20px; }
+.brand svg { width: 22px; height: 22px; }
+.navgrp { font-size: 11px; color: var(--soft); text-transform: uppercase; letter-spacing: .08em; padding: 14px 10px 6px; }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; color: var(--mid); text-decoration: none; margin-bottom: 1px; }
+.nav a:hover { background: var(--chip); color: var(--ink); }
+.nav a.on { background: #ececef; color: var(--ink); font-weight: 500; }
+.nav svg { width: 17px; height: 17px; flex-shrink: 0; }
+.nav .cnt { margin-left: auto; background: var(--bad); color: #fff; border-radius: 999px; font-size: 11px; padding: 0 7px; line-height: 18px; display: none; }
+.nav .cnt.show { display: inline-block; }
+.spacer { flex: 1; min-height: 16px; }
+.card { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+.card .lbl { font-size: 12px; color: var(--soft); }
+.card .big { font-size: 14.5px; font-weight: 600; margin-top: 2px; word-break: break-word; }
+.card .sub { font-size: 12px; color: var(--mid); margin-top: 4px; font-family: var(--mono); white-space: pre-line; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--soft); margin-right: 6px; vertical-align: 1px; }
+.dot.live { background: var(--ok); } .dot.off { background: var(--bad); }
+
+/* ---------- page frame ---------- */
+main { overflow: auto; min-width: 0; }
+.page { display: none; } .page.on { display: block; }
+.topbar { height: 46px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; padding: 0 22px; color: var(--mid); position: sticky; top: 0; background: #fff; z-index: 2; }
+.topbar b { color: var(--ink); font-weight: 500; }
+.topbar .fill { flex: 1; }
+.wrap { padding: 24px 28px 48px; max-width: 1280px; }
+h1 { font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+.lede { color: var(--mid); margin: 6px 0 22px; max-width: 75ch; }
+h2 { font-size: 13px; font-weight: 600; color: var(--mid); text-transform: uppercase; letter-spacing: .06em; margin: 28px 0 10px; }
+.grid { display: grid; gap: 14px; }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.kpi { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.kpi .v { font-size: 26px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.kpi .k { color: var(--mid); font-size: 13px; margin-top: 2px; }
+.box { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.boxhead { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--mid); background: var(--side); }
+.boxbody { padding: 14px 16px; }
+table { border-collapse: collapse; width: 100%; }
+th { text-align: left; font-weight: 500; color: var(--soft); font-size: 12.5px; padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--side); white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--line2); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+.empty { padding: 26px 16px; color: var(--soft); text-align: center; }
+.pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.pill.auto, .pill.done, .pill.online, .pill.yes { background: var(--ok-bg); color: var(--ok); }
+.pill.confirm, .pill.awaiting_approval, .pill.queued { background: var(--warn-bg); color: var(--warn); }
+.pill.escalate, .pill.failed, .pill.offline, .pill.no { background: var(--bad-bg); color: var(--bad); }
+.pill.running { background: var(--acc-bg); color: var(--acc); }
+.reasons { color: var(--bad); font-size: 12.5px; margin-top: 4px; }
+.muted { color: var(--mid); } .soft { color: var(--soft); }
+.btn { border: 1px solid var(--line); background: #fff; padding: 6px 12px; border-radius: 7px; }
+.btn:hover { background: var(--chip); }
+.btn.dark { background: #111; color: #fff; border-color: #111; }
+.btn.dark:hover { background: #2a2a2e; }
+.btn.okb { color: var(--ok); border-color: #b9e3ca; } .btn.badb { color: var(--bad); border-color: #f2c2b9; }
+.form { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; }
+.form label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--mid); }
+.form input, .form select { border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px; background: #fff; min-width: 0; }
+.form input[type=number] { width: 110px; }
+.form .chk { flex-direction: row; align-items: center; gap: 6px; padding-bottom: 7px; }
+pre.code { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font: 12.5px/1.6 var(--mono); overflow: auto; white-space: pre; }
+.note { font-size: 12.5px; color: var(--soft); margin-top: 8px; }
+.err { color: var(--bad); font-size: 12.5px; }
+.cands { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 12.5px; margin-top: 6px; font-family: var(--mono); }
+.cands .win { color: var(--ok); font-weight: 500; }
+.hbar { height: 8px; background: var(--line2); border-radius: 4px; overflow: hidden; }
+.hbar i { display: block; height: 100%; background: var(--acc); border-radius: 4px; }
+
+/* ---------- playground (Jev-style) ---------- */
+.pg { display: grid; grid-template-columns: minmax(360px, 1fr) minmax(440px, 1.15fr); height: calc(100vh - 46px); }
+.pgmid { display: grid; grid-template-rows: 44px 1fr 44px 1fr 48px; border-right: 1px solid var(--line); min-width: 0; }
+.sec { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; color: var(--mid); border-bottom: 1px solid var(--line); background: #fff; gap: 10px; }
+.sec select { border: 0; background: none; color: var(--ink); max-width: 260px; cursor: pointer; }
+.ed { position: relative; display: grid; grid-template-columns: 44px 1fr; overflow: hidden; }
+.gut { font: 13px/1.6 var(--mono); color: var(--soft); text-align: right; padding: 12px 10px 12px 0; overflow: hidden; user-select: none; white-space: pre; }
+.ed textarea { font: 13px/1.6 var(--mono); color: var(--ink); border: 0; outline: 0; resize: none; padding: 12px 12px 12px 6px; background: var(--code-bg); white-space: pre; overflow: auto; tab-size: 2; }
+.ed textarea:focus { background: #f3f5f9; }
+.run { display: flex; align-items: stretch; border-top: 1px solid var(--line); }
+.run .model { display: flex; align-items: center; gap: 8px; padding: 0 14px; flex: 1; color: var(--mid); overflow: hidden; }
+.run .model span { background: var(--chip); padding: 3px 8px; border-radius: 4px; font-family: var(--mono); font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+.run .go { background: #111; color: #fff; padding: 0 34px; font-weight: 500; }
+.run .go:disabled { opacity: .5; cursor: wait; }
+.pgright { display: grid; grid-template-rows: 44px 1fr; min-width: 0; }
+.rhead { display: grid; grid-template-columns: 36px 1.1fr 1fr 104px; align-items: center; padding: 0 16px 0 8px; color: var(--mid); font-size: 13.5px; border-bottom: 1px solid var(--line); }
+.rows { overflow: auto; }
+.row { display: grid; grid-template-columns: 36px 1.1fr 1fr 104px; gap: 0 10px; padding: 18px 16px 18px 8px; border-bottom: 1px solid var(--line); }
+.row .chev { color: var(--soft); text-align: center; cursor: pointer; user-select: none; }
+.row .k { font-family: var(--mono); font-size: 15px; }
+.row .q { font-style: italic; color: var(--mid); margin-top: 6px; font-size: 13.5px; }
+.row .extra { margin-top: 8px; font-size: 12.5px; color: var(--soft); font-family: var(--mono); }
+.row.collapsed .q, .row.collapsed .extra, .row.collapsed .conf, .row.collapsed .reasons { display: none; }
+.ans .main { font-size: 16px; font-weight: 500; }
+.ans .main small { color: var(--soft); font-weight: 400; font-size: 13px; margin-left: 4px; }
+.ans .conf { color: var(--mid); margin-top: 8px; font-size: 13.5px; }
+.track { position: relative; height: 2px; background: var(--line); width: 150px; margin-top: 14px; }
+.track i { position: absolute; top: -3px; width: 8px; height: 8px; transform: translateX(-4px) rotate(45deg); }
+.opts { display: grid; grid-template-columns: 1fr auto 14px; gap: 6px 10px; align-items: center; font-family: var(--mono); font-size: 13.5px; }
+.opts .o { color: var(--mid); } .opts .o.top { color: var(--ink); }
+.ring { width: 13px; height: 13px; }
+.badge { justify-self: end; text-align: right; }
+.badge b { display: inline-block; font: 13px var(--mono); color: var(--mid); background: var(--chip); padding: 3px 9px; border-radius: 3px; font-weight: 400; }
+.badge div { color: var(--mid); font-size: 13px; margin-top: 18px; }
+.tel { display: flex; gap: 18px; flex-wrap: wrap; padding: 12px 16px 12px 44px; border-bottom: 1px solid var(--line); background: var(--side); font-size: 12.5px; color: var(--mid); }
+.tel b { font-family: var(--mono); font-weight: 500; color: var(--ink); }
+.pempty { padding: 60px 30px; color: var(--soft); text-align: center; line-height: 1.7; }
+
+@media (max-width: 1100px) { .g4 { grid-template-columns: repeat(2, 1fr); } .g3, .g2 { grid-template-columns: 1fr; } .pg { grid-template-columns: 1fr; height: auto; } .pgmid { grid-template-rows: 44px 260px 44px 260px 48px; } }
+@media (max-width: 760px) { .app { grid-template-columns: 1fr; } .side { display: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ===================== SIDEBAR ===================== -->
+<aside class="side">
+  <div class="brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l8.5 5v10L12 22l-8.5-5V7z"/><path d="M8 14.5l3-3 2 2 3-4"/></svg>HPC-DS1</div>
+  <nav class="nav" id="nav">
+    <a href="#overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 11l9-7 9 7v9H3z"/></svg>Overview</a>
+    <a href="#playground"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 3h6M10 3v6L5 19a2 2 0 0 0 1.8 2.9h10.4A2 2 0 0 0 19 19l-5-10V3"/></svg>Playground</a>
+    <div class="navgrp">Operate</div>
+    <a href="#fleet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="8" height="6" rx="1"/><rect x="13" y="4" width="8" height="6" rx="1"/><rect x="8" y="14" width="8" height="6" rx="1"/><path d="M7 10v2h10v-2M12 12v2"/></svg>Fleet</a>
+    <a href="#approvals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>Approvals<span class="cnt" id="qCnt">0</span></a>
+    <a href="#tuning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 18l5-6 4 3 7-9"/><path d="M15 6h5v5"/></svg>Tuning sessions</a>
+    <a href="#audit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7M9 7h3"/></svg>Audit log</a>
+    <div class="navgrp">This machine</div>
+    <a href="#machine"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>Machine &amp; setup</a>
+    <a href="#evaluation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Evaluation</a>
+    <a href="#integrate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg>Integrate</a>
+    <a href="/explorer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Layer explorer</a>
+  </nav>
+  <div class="spacer"></div>
+  <div class="card"><div class="lbl">Model</div><div class="big" id="sbModel">hpc-ds1</div><div class="sub" id="sbModelSub">connecting…</div></div>
+  <div class="card"><div class="lbl"><span class="dot" id="sbDot"></span>Coordinator</div><div class="big" id="sbHw">-</div><div class="sub" id="sbHwSub"></div></div>
+</aside>
+
+<main>
+<!-- ===================== OVERVIEW ===================== -->
+<section class="page" id="p-overview">
+  <div class="topbar"><b>Overview</b><span class="fill"></span><span class="soft" id="ovTime"></span></div>
+  <div class="wrap">
+    <h1>Facility at a glance</h1>
+    <p class="lede">HPC-DS1 tunes jobs one change at a time. Confident, familiar decisions run automatically; everything else waits here for an engineer. Connected devices each learn their own hardware, and the coordinator sends every task to the device expected to finish it first.</p>
+    <div class="grid g4">
+      <div class="kpi"><div class="v" id="kDev">-</div><div class="k">devices online</div></div>
+      <div class="kpi"><div class="v" id="kRun">-</div><div class="k">tasks and sessions running</div></div>
+      <div class="kpi"><div class="v" id="kQ">-</div><div class="k">moves waiting for approval</div></div>
+      <div class="kpi"><div class="v" id="kAuto">-</div><div class="k">of logged decisions ran automatically</div></div>
+    </div>
+    <div class="grid g2" style="margin-top:14px">
+      <div class="box"><div class="boxhead">Waiting for an engineer <a href="#approvals">open queue →</a></div><div id="ovQueue"></div></div>
+      <div class="box"><div class="boxhead">Latest decisions <a href="#audit">audit log →</a></div><div id="ovAudit"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== PLAYGROUND ===================== -->
+<section class="page" id="p-playground">
+  <div class="topbar"><b>Playground</b><span>/</span><span class="soft">state + questions in, typed answers out</span><span class="fill"></span>
+    <button class="btn" id="pgClear">Clear</button><button class="btn" id="pgFmt">Format</button></div>
+  <div class="pg">
+    <div class="pgmid">
+      <div class="sec"><span>State</span><select id="pgPreset" aria-label="Example job"></select></div>
+      <div class="ed"><div class="gut" id="gState"></div><textarea id="pgState" spellcheck="false" aria-label="State JSON"></textarea></div>
+      <div class="sec"><span>Questions</span><span class="soft" id="pgQn" style="font-size:12px"></span></div>
+      <div class="ed"><div class="gut" id="gQs"></div><textarea id="pgQs" spellcheck="false" aria-label="Questions JSON"></textarea></div>
+      <div class="run"><div class="model"><span>hpc-ds1-latest</span><span id="pgThr">auto ≥ 0.85 · escalate &lt; 0.5</span><span class="err" id="pgErr" style="background:none"></span></div>
+        <button class="go" id="pgRun">Run</button></div>
+    </div>
+    <div class="pgright">
+      <div class="rhead"><span></span><span>Key &amp; instructions</span><span class="soft" id="pgMeta"></span><span style="text-align:right">Primitive type</span></div>
+      <div class="rows" id="pgRows"><div class="pempty">Edit the job on the left and press <b>Run</b> (Ctrl+Enter).<br>Without telemetry the job is first run for real on this machine,<br>then every answer comes from one forward pass of the model.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FLEET ===================== -->
+<section class="page" id="p-fleet">
+  <div class="topbar"><b>Fleet</b><span class="fill"></span><span class="soft" id="flUpd"></span></div>
+  <div class="wrap">
+    <h1>Devices and task placement</h1>
+    <p class="lede">Any machine with HPC-DS1 installed can join over the network. Each device keeps its own measurements and model; the coordinator compares every device's expected finish time (its queue plus its own best measured runtime for the job) and sends the task to the earliest.</p>
+    <div class="box"><div class="boxhead">Connect a device</div><div class="boxbody">
+      <div class="grid g2">
+        <div><div class="muted" style="margin-bottom:6px">1 · On this coordinator, accept other machines</div><pre class="code">hpc-ds1 serve --host 0.0.0.0</pre></div>
+        <div><div class="muted" style="margin-bottom:6px">2 · On each device (once: <code>pip install .</code> and <code>hpc-ds1 setup</code>)</div><pre class="code" id="flJoin">hpc-ds1 agent --server http://&lt;coordinator-ip&gt;:8765 --token …</pre></div>
+      </div>
+      <div class="note">The join token is shown only to this machine. Agents poll the coordinator over HTTP, so devices need no open ports and no direct link to each other.</div>
+    </div></div>
+    <h2>Devices</h2>
+    <div class="box"><table><thead><tr><th>Device</th><th>Status</th><th>Hardware</th><th>Measured kernels</th><th>Model trained on</th><th>Working on</th></tr></thead><tbody id="flDevs"></tbody></table></div>
+    <h2>Submit a task</h2>
+    <div class="box"><div class="boxbody">
+      <div class="form" id="flForm"></div>
+      <div class="err" id="flErr" style="margin-top:8px"></div>
+    </div></div>
+    <h2>Tasks</h2>
+    <div class="box"><table><thead><tr><th>Task</th><th>Job</th><th>Placed on · why</th><th>Status</th><th>Result</th></tr></thead><tbody id="flTasks"></tbody></table></div>
+  </div>
+</section>
+
+<!-- ===================== APPROVALS ===================== -->
+<section class="page" id="p-approvals">
+  <div class="topbar"><b>Approvals</b><span class="fill"></span><input id="apBy" placeholder="your name" style="border:1px solid var(--line);border-radius:7px;padding:5px 9px;width:160px" aria-label="Approver name"></div>
+  <div class="wrap">
+    <h1>Moves waiting for an engineer</h1>
+    <p class="lede">A move lands here when the model is not sure enough (<span class="pill confirm">confirm</span> 0.5–0.85, <span class="pill escalate">escalate</span> below 0.5) or when the familiarity guard says the job or machine is unlike its training data, however confident it is. The session pauses until you decide; a rejected move ends the session at the last good configuration.</p>
+    <div class="box"><table><thead><tr><th>From</th><th>Job · current config</th><th>Suggested move</th><th>Confidence</th><th>Why it is here</th><th></th></tr></thead><tbody id="apRows"></tbody></table></div>
+  </div>
+</section>
+
+<!-- ===================== TUNING SESSIONS ===================== -->
+<section class="page" id="p-tuning">
+  <div class="topbar"><b>Tuning sessions</b><span class="fill"></span></div>
+  <div class="wrap">
+    <h1>Tune a job on this machine</h1>
+    <p class="lede">Every step runs for real. Faster moves are kept, slower or failing ones are reverted; the session stops when the model says stop or after two misses in a row.</p>
+    <div class="box"><div class="boxbody"><div class="form" id="tuForm"></div><div class="err" id="tuErr" style="margin-top:8px"></div></div></div>
+    <h2>Sessions</h2>
+    <div class="box"><table><thead><tr><th>Session</th><th>Job</th><th>Status</th><th>Result</th><th>Started</th></tr></thead><tbody id="tuRows"></tbody></table></div>
+    <div id="tuDetail"></div>
+  </div>
+</section>
+
+<!-- ===================== AUDIT ===================== -->
+<section class="page" id="p-audit">
+  <div class="topbar"><b>Audit log</b><span class="fill"></span><span class="soft" id="auPath"></span></div>
+  <div class="wrap">
+    <h1>Every decision the service made</h1>
+    <p class="lede">Kept in memory and appended to <code>~/.hpc_ds1/audit.jsonl</code> on the coordinator, with who approved what.</p>
+    <div class="box"><table><thead><tr><th>#</th><th>Time (UTC)</th><th>Source</th><th>Job · config</th><th>Choice</th><th>Conf.</th><th>Mode</th><th>Approved</th></tr></thead><tbody id="auRows"></tbody></table></div>
+  </div>
+</section>
+
+<!-- ===================== MACHINE ===================== -->
+<section class="page" id="p-machine">
+  <div class="topbar"><b>Machine &amp; setup</b><span class="fill"></span></div>
+  <div class="wrap">
+    <h1 id="maName">This machine</h1>
+    <p class="lede">HPC-DS1 learns the machine it runs on. The model and its familiarity guard come from measurements of this hardware; on a different machine, run setup once so decisions are based on that machine.</p>
+    <div class="grid g4" id="maHw"></div>
+    <div class="grid g2" style="margin-top:14px">
+      <div class="box"><div class="boxhead">Model on this machine</div><div class="boxbody" id="maModel"></div></div>
+      <div class="box"><div class="boxhead">Set up a new machine</div><div class="boxbody">
+        <pre class="code">pip install .                 # from the project folder
+hpc-ds1 setup --quick         # ~30 min: measure + train
+hpc-ds1 setup                 # ~1 h: all 6 sizes per kernel
+hpc-ds1 serve                 # this console</pre>
+        <div class="note">Measurements and the model go to <code>~/.hpc_ds1</code> (or <code>$HPC_DS1_HOME</code>); <code>hpc_ds1.load()</code> uses them from then on.</div>
+      </div></div>
+    </div>
+    <h2>What was measured here</h2>
+    <div class="box"><table><thead><tr><th>Kernel</th><th>Sizes measured</th><th>Correct runs</th><th>Guard: allowed size range</th></tr></thead><tbody id="maCov"></tbody></table></div>
+  </div>
+</section>
+
+<!-- ===================== EVALUATION ===================== -->
+<section class="page" id="p-evaluation">
+  <div class="topbar"><b>Evaluation</b><span class="fill"></span><a href="/explorer#eval">full charts in the layer explorer →</a></div>
+  <div class="wrap">
+    <h1>How good it is, measured</h1>
+    <p class="lede">All on problem sizes the model never trained on, from real runs on the training machine.</p>
+    <div class="grid g4" id="evKpi"></div>
+    <h2>Tuning sessions on held-out sizes</h2>
+    <div class="box"><table><thead><tr><th>Policy</th><th>% of best config reached</th><th></th><th>Real runs per session</th></tr></thead><tbody id="evReplay"></tbody></table></div>
+    <h2>Familiarity guard on never-seen kernels</h2>
+    <div class="box"><table><thead><tr><th>Kernel held out of training</th><th>Flagged by guard</th><th>By distance alone</th><th>Confidently wrong auto-runs: before → after</th></tr></thead><tbody id="evGuard"></tbody></table></div>
+  </div>
+</section>
+
+<!-- ===================== INTEGRATE ===================== -->
+<section class="page" id="p-integrate">
+  <div class="topbar"><b>Integrate</b><span class="fill"></span><a href="/v1/schema" target="_blank">/v1/schema</a></div>
+  <div class="wrap">
+    <h1>Plug it into existing tools</h1>
+    <p class="lede">The same decision is available as a Python call, a command, or an HTTP request, so it can sit inside a job script, a scheduler hook or a dashboard.</p>
+    <div class="grid g2">
+      <div><h2 style="margin-top:0">Python</h2><pre class="code">import hpc_ds1
+
+model = hpc_ds1.load()                 # this machine's model
+state = model.observe("gemm", 2048,    # runs the job once, for real
+                      {"ranks": 2, "threads": 4})
+d = model.decide(state)
+
+if d.mode == "auto":
+    apply(d.choice)
+elif d.mode == "confirm":
+    ask_to_confirm(d)                  # one-click yes/no
+else:
+    escalate(d, d.reasons)             # unsure or unfamiliar</pre></div>
+      <div><h2 style="margin-top:0">Command line</h2><pre class="code">hpc-ds1 decide --workload gemm --size 2048 \
+               --ranks 2 --threads 4
+hpc-ds1 tune   --workload stencil --size 160
+hpc-ds1 submit --server http://coordinator:8765 \
+               --token TOKEN --workload nbody --size 4096
+hpc-ds1 agent  --server http://coordinator:8765 \
+               --token TOKEN</pre></div>
+      <div><h2>HTTP</h2><pre class="code">curl -X POST http://127.0.0.1:8765/v1/decide \
+  -H "Content-Type: application/json" \
+  -d '{"workload": "gemm", "size": 2048,
+       "config": {"ranks": 2, "threads": 4}}'
+
+# -> {"choice": "USE_GPU", "confidence": 0.99,
+#     "mode": "auto", "reasons": [], ...}</pre></div>
+      <div><h2>Fleet from Python</h2><pre class="code">from hpc_ds1.fleet import Agent, submit
+
+# on a device
+Agent("http://coordinator:8765", TOKEN).run()
+
+# anywhere
+t = submit("http://coordinator:8765", TOKEN,
+           "montecarlo", 8_000_000)
+print(t["placement"]["reason"])</pre></div>
+    </div>
+  </div>
+</section>
+</main>
+</div>
+
+<script>
+/* =====================================================================
+   helpers
+   ===================================================================== */
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+function pct(x) { return Math.round(x * 100) + "%"; }
+function ms(sec) { return sec == null ? "-" : sec < 1 ? (sec * 1000).toFixed(sec < 0.01 ? 2 : 1) + " ms" : sec.toFixed(2) + " s"; }
+function cfg(c) { if (!c) return ""; return c.gpu ? "GPU · " + c.precision : c.ranks + "×" + c.threads + " CPU · " + c.precision; }
+function job(w, s) { return '<span class="mono">' + esc(w) + " " + esc(Number(s).toLocaleString()) + "</span>"; }
+function pill(t, label) { return '<span class="pill ' + esc(t) + '">' + esc(label || String(t).replace("_", " ")) + "</span>"; }
+function api(path, body) {
+  var o = body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+  return fetch(path, o).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.statusText); return j; }); });
+}
+function when(iso) { return iso ? iso.replace("T", " ").replace("+00:00", "") : ""; }
+var WORKLOADS = {}, HW = {}, TOKEN = "";
+
+/* =====================================================================
+   routing
+   ===================================================================== */
+var PAGES = ["overview", "playground", "fleet", "approvals", "tuning", "audit", "machine", "evaluation", "integrate"];
+function route() {
+  var h = (location.hash || "").slice(1) || (location.pathname === "/playground" ? "playground" : "overview");
+  if (PAGES.indexOf(h) < 0) h = "overview";
+  PAGES.forEach(function (p) { $("p-" + p).classList.toggle("on", p === h); });
+  document.querySelectorAll("#nav a").forEach(function (a) { a.classList.toggle("on", a.getAttribute("href") === "#" + h); });
+  refresh(h);
+}
+window.addEventListener("hashchange", route);
+
+/* =====================================================================
+   shared job form (fleet + tuning)
+   ===================================================================== */
+function jobForm(el, submitLabel, onSubmit) {
+  var ws = Object.keys(WORKLOADS);
+  el.innerHTML =
+    '<label>Kernel<select data-f="workload">' + ws.map(function (w) { return '<option value="' + w + '">' + esc(WORKLOADS[w].display_name || w) + "</option>"; }).join("") + "</select></label>" +
+    '<label>Size<select data-f="size"></select></label>' +
+    '<label>Ranks<input type="number" data-f="ranks" value="1" min="1" max="8"></label>' +
+    '<label>Threads<input type="number" data-f="threads" value="1" min="1" max="16"></label>' +
+    '<label class="chk"><input type="checkbox" data-f="gpu">GPU</label>' +
+    '<label class="chk"><input type="checkbox" data-f="bf16">bf16</label>' +
+    '<label>Auto-run at<input type="number" data-f="threshold" value="0.85" min="0" max="1" step="0.05"></label>' +
+    '<button class="btn dark">' + submitLabel + "</button>";
+  var f = function (n) { return el.querySelector('[data-f="' + n + '"]'); };
+  function sizes() {
+    var w = WORKLOADS[f("workload").value];
+    f("size").innerHTML = (w ? w.sizes : []).map(function (s) { return '<option value="' + s + '">' + Number(s).toLocaleString() + "</option>"; }).join("");
+  }
+  f("workload").addEventListener("change", sizes); sizes();
+  el.querySelector("button").addEventListener("click", function () {
+    var gpu = f("gpu").checked;
+    onSubmit({ workload: f("workload").value, size: +f("size").value, threshold: +f("threshold").value,
+      config: { ranks: gpu ? 1 : +f("ranks").value, threads: +f("threads").value, gpu: gpu, precision: f("bf16").checked ? "bf16" : "fp32" } }, el.querySelector("button"));
+  });
+}
+
+/* =====================================================================
+   page renderers
+   ===================================================================== */
+function queueRows(q, compact) {
+  if (!q.length) return '<div class="empty">Nothing is waiting. Confident, familiar moves are running on their own.</div>';
+  if (compact) return '<table><tbody>' + q.slice(0, 5).map(function (x) {
+    return "<tr><td>" + job(x.workload, x.size) + '<div class="soft">' + esc(x.device || "this machine") + "</div></td><td>" + esc(x.action) + "</td><td>" + pill(x.mode) + "</td></tr>";
+  }).join("") + "</tbody></table>";
+  return q.map(function (x) {
+    var from = x.task ? "task " + x.task + " · " + x.device : "session " + x.session;
+    var key = x.task ? "task:" + x.task : "session:" + x.session;
+    var why = x.reasons && x.reasons.length ? '<div class="reasons">' + x.reasons.map(esc).join("<br>") + "</div>" : '<span class="muted">confidence below the auto-run threshold</span>';
+    return "<tr><td>" + esc(from) + '<div class="soft">' + when(x.since) + "</div></td><td>" + job(x.workload, x.size) + '<div class="soft">' + cfg(x.config) + " · " + ms(x.runtime_sec) + "</div></td>" +
+      '<td class="mono">' + esc(x.action) + "</td><td>" + pct(x.confidence) + " " + pill(x.mode) + "</td><td>" + why + "</td>" +
+      '<td style="white-space:nowrap"><button class="btn okb" data-ap="' + key + '" data-ok="1">Approve</button> <button class="btn badb" data-ap="' + key + '" data-ok="0">Reject</button></td></tr>';
+  }).join("");
+}
+
+function answer(key, ok) {
+  var by = $("apBy").value.trim() || "engineer";
+  var p = key.split(":"), path = p[0] === "task" ? "/v1/fleet/tasks/" + p[1] + "/approve" : "/v1/sessions/" + p[1] + "/approve";
+  return api(path, { approve: ok, by: by }).then(function () { refresh(); });
+}
+document.addEventListener("click", function (e) {
+  var b = e.target.closest("[data-ap]");
+  if (b) { b.disabled = true; answer(b.getAttribute("data-ap"), b.getAttribute("data-ok") === "1").catch(function (err) { alert(err.message); }); }
+  var s = e.target.closest("[data-session]");
+  if (s) showSession(s.getAttribute("data-session"));
+});
+
+function renderOverview() {
+  return Promise.all([api("/v1/fleet"), api("/v1/queue"), api("/v1/audit?limit=200"), api("/v1/sessions")]).then(function (r) {
+    var fl = r[0], q = r[1], au = r[2], ss = r[3];
+    $("kDev").textContent = fl.devices.filter(function (d) { return d.online; }).length + " / " + fl.devices.length;
+    $("kRun").textContent = fl.tasks.filter(function (t) { return t.status === "running" || t.status === "queued"; }).length + ss.filter(function (s) { return s.status === "running"; }).length;
+    $("kQ").textContent = q.length;
+    $("kAuto").textContent = au.length ? pct(au.filter(function (a) { return a.mode === "auto"; }).length / au.length) : "-";
+    $("ovQueue").innerHTML = queueRows(q, true);
+    $("ovAudit").innerHTML = au.length ? "<table><tbody>" + au.slice(0, 6).map(function (a) {
+      return "<tr><td>" + job(a.workload, a.size) + '<div class="soft">' + esc(a.source) + "</div></td><td class=\"mono\">" + esc(a.choice) + "</td><td>" + pct(a.confidence) + "</td><td>" + pill(a.mode) + "</td></tr>";
+    }).join("") + "</tbody></table>" : '<div class="empty">No decisions yet. Try the Playground.</div>';
+    $("ovTime").textContent = "updated " + new Date().toLocaleTimeString();
+  });
+}
+
+function renderFleet() {
+  return api("/v1/fleet").then(function (fl) {
+    if (fl.token) { TOKEN = fl.token; $("flJoin").textContent = "hpc-ds1 agent --server http://<coordinator-ip>:" + (location.port || 80) + " --token " + fl.token; }
+    var names = {};
+    fl.devices.forEach(function (d) { names[d.id] = d.name; });
+    $("flDevs").innerHTML = fl.devices.length ? fl.devices.map(function (d) {
+      var h = d.hardware || {};
+      var meas = Object.keys(d.measured || {});
+      return "<tr><td><b>" + esc(d.name) + '</b><div class="soft mono">' + esc(d.id) + "</div></td><td>" + pill(d.online ? "online" : "offline") +
+        '<div class="soft">seen ' + d.seconds_since_seen + "s ago</div></td><td>" + esc(h.cpu_cores) + "C/" + esc(h.cpu_threads) + "T · " + esc(h.ram_gb) + " GB" +
+        '<div class="soft">' + esc(h.gpu_model || "no GPU") + "</div></td><td>" + (meas.length ? esc(meas.join(", ")) : '<span class="reasons">none yet: run hpc-ds1 setup</span>') +
+        "</td><td>" + esc(d.model && d.model.trained_on) + (d.model && d.model.trained_on !== h.name ? '<div class="reasons">not this device: moves need approval</div>' : "") +
+        "</td><td>" + (d.current ? '<span class="mono">' + esc(d.current) + "</span>" : '<span class="soft">idle</span>') + "</td></tr>";
+    }).join("") : '<tr><td colspan="6"><div class="empty">No devices yet. Run the agent command above on any machine, including this one.</div></td></tr>';
+    $("flTasks").innerHTML = fl.tasks.length ? fl.tasks.map(function (t) {
+      var c = t.placement.candidates.slice().sort(function (a, b) { return (a.finish_sec == null) - (b.finish_sec == null) || a.finish_sec - b.finish_sec; });
+      var cands = '<div class="cands">' + c.map(function (x) {
+        return '<span class="' + (x.device === t.device ? "win" : "") + '">' + esc(x.name) + "</span><span>" + (x.finish_sec == null ? esc(x.note) : "finish " + ms(x.finish_sec) + " = queue " + ms(x.queue_sec) + " + run " + ms(x.expected_runtime_sec)) + "</span>";
+      }).join("") + "</div>";
+      var res = t.result ? "×" + t.result.speedup.toFixed(2) + " in " + t.result.experiments + ' runs<div class="soft">' + cfg(t.result.final_config) + " · " + esc(t.result.stopped_reason.replace("_", " ")) + "</div>" : t.error ? '<span class="reasons">' + esc(t.error) + "</span>" : "";
+      return '<tr><td class="mono">' + esc(t.id) + '<div class="soft">' + when(t.submitted_at) + "</div></td><td>" + job(t.workload, t.size) + '<div class="soft">from ' + cfg(t.config) + "</div></td><td><b>" + esc(names[t.device] || t.device) +
+        '</b><div class="muted" style="font-size:12.5px">' + esc(t.placement.reason) + "</div>" + cands + "</td><td>" + pill(t.status) + "</td><td>" + res + "</td></tr>";
+    }).join("") : '<tr><td colspan="5"><div class="empty">No tasks yet.</div></td></tr>';
+    $("flUpd").textContent = "updated " + new Date().toLocaleTimeString();
+  });
+}
+
+function renderApprovals() {
+  return api("/v1/queue").then(function (q) {
+    $("apRows").innerHTML = q.length ? queueRows(q) : '<tr><td colspan="6">' + queueRows(q) + "</td></tr>";
+  });
+}
+
+var OPEN_SESSION = null;
+function renderTuning() {
+  return api("/v1/sessions").then(function (ss) {
+    $("tuRows").innerHTML = ss.length ? ss.map(function (s) {
+      var r = s.result;
+      return '<tr><td><a href="javascript:void 0" data-session="' + s.id + '" class="mono">' + esc(s.id) + "</a></td><td>" + job(s.workload, s.size) + '<div class="soft">from ' + cfg(s.initial_config) + "</div></td><td>" + pill(s.status) +
+        "</td><td>" + (r ? "×" + r.speedup.toFixed(2) + " in " + r.experiments + ' runs<div class="soft">' + cfg(r.final_config) + "</div>" : s.error ? '<span class="reasons">' + esc(s.error) + "</span>" : "") + "</td><td class=\"soft\">" + when(s.started_at) + "</td></tr>";
+    }).join("") : '<tr><td colspan="5"><div class="empty">No sessions yet.</div></td></tr>';
+    if (OPEN_SESSION) showSession(OPEN_SESSION);
+  });
+}
+function showSession(id) {
+  OPEN_SESSION = id;
+  api("/v1/sessions/" + id).then(function (s) {
+    var rows = s.decisions.map(function (d, i) {
+      var run = s.runs[i + 1];
+      return "<tr><td>" + (i + 1) + "</td><td>" + cfg(d.config) + '</td><td class="mono">' + esc(d.choice) + "</td><td>" + pct(d.confidence) + " " + pill(d.mode) +
+        (d.reasons && d.reasons.length ? '<div class="reasons">' + d.reasons.map(esc).join("<br>") + "</div>" : "") + "</td><td>" +
+        (d.approved === undefined ? (d.mode === "auto" ? '<span class="soft">automatic</span>' : '<span class="soft">pending</span>') : pill(d.approved ? "yes" : "no", d.approved ? "approved by " + d.approved_by : "rejected by " + d.approved_by)) +
+        "</td><td>" + (run ? (run.ok ? ms(run.runtime_sec) : '<span class="reasons">failed or wrong</span>') : "") + "</td></tr>";
+    }).join("");
+    $("tuDetail").innerHTML = "<h2>Session " + esc(s.id) + " · " + job(s.workload, s.size) + "</h2>" +
+      '<div class="box"><table><thead><tr><th>Step</th><th>Config</th><th>Model chose</th><th>Confidence · mode</th><th>Approval</th><th>Next run</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="6"><div class="empty">Measuring the starting config…</div></td></tr>') + "</tbody></table></div>" +
+      '<div class="note">Start: ' + cfg(s.initial_config) + " · " + (s.runs[0] ? ms(s.runs[0].runtime_sec) : "…") + "</div>";
+  });
+}
+
+function renderAudit() {
+  return api("/v1/audit?limit=300").then(function (au) {
+    $("auRows").innerHTML = au.length ? au.map(function (a) {
+      var ap = a.approved === undefined ? (a.mode === "auto" ? '<span class="soft">automatic</span>' : '<span class="soft">-</span>') : pill(a.approved ? "yes" : "no", (a.approved ? "yes · " : "no · ") + a.approved_by);
+      return '<tr><td class="soft">' + a.id + '</td><td class="soft mono">' + when(a.at) + "</td><td>" + esc(a.source) + "</td><td>" + job(a.workload, a.size) + '<div class="soft">' + cfg(a.config) + " · " + ms(a.runtime_sec) + '</div></td><td class="mono">' + esc(a.choice) +
+        "</td><td>" + pct(a.confidence) + "</td><td>" + pill(a.mode) + (a.reasons && a.reasons.length ? '<div class="reasons">' + a.reasons.map(esc).join("<br>") + "</div>" : "") + "</td><td>" + ap + "</td></tr>";
+    }).join("") : '<tr><td colspan="8"><div class="empty">No decisions logged yet.</div></td></tr>';
+  });
+}
+
+function renderMachine() {
+  return api("/v1/machine").then(function (m) {
+    var h = m.hardware;
+    $("maName").textContent = h.name;
+    $("maHw").innerHTML = [[h.cpu_cores + " / " + h.cpu_threads, "CPU cores / threads"], [h.ram_gb + " GB", "memory"], [h.gpu_model ? h.gpu_memory_gb + " GB" : "none", h.gpu_model || "GPU"], [h.cpu_freq_ghz + " GHz", "CPU clock"]]
+      .map(function (k) { return '<div class="kpi"><div class="v">' + esc(k[0]) + '</div><div class="k">' + esc(k[1]) + "</div></div>"; }).join("");
+    var match = m.model_matches_this_machine;
+    $("maModel").innerHTML = '<table><tbody><tr><td class="muted">Trained on</td><td>' + esc(m.trained_on) + " " + (match === false ? pill("escalate", "different machine") : pill("auto", "this machine")) + "</td></tr>" +
+      '<tr><td class="muted">Trained at</td><td>' + esc(when(m.trained_at)) + "</td></tr>" +
+      '<tr><td class="muted">Model file</td><td class="mono" style="word-break:break-all">' + esc(m.checkpoint) + "</td></tr>" +
+      '<tr><td class="muted">Measurements</td><td class="mono" style="word-break:break-all">' + esc(m.data_dir) + "</td></tr>" +
+      '<tr><td class="muted">Familiarity guard</td><td>' + (m.guard ? m.guard.reference_states + " reference runs · " + m.guard.workloads.length + " kernels" : '<span class="reasons">none: run scripts/fit_guard.py or hpc-ds1 setup</span>') + "</td></tr>" +
+      (m.setup_report ? '<tr><td class="muted">Last setup</td><td>' + pct(m.setup_report.test_accuracy) + " best moves · " + m.setup_report.minutes + " min</td></tr>" : "") + "</tbody></table>" +
+      (match === false ? '<div class="reasons" style="margin-top:8px">This model was measured on another machine, so the guard sends every move for approval. Run <code>hpc-ds1 setup</code> here.</div>' : "");
+    var rows = Object.keys(m.coverage).map(function (w) {
+      var c = m.coverage[w], r = m.guard && m.guard.size_range[w];
+      return '<tr><td>' + esc((WORKLOADS[w] || {}).display_name || w) + ' <span class="soft mono">' + w + "</span></td><td class=\"mono\">" + c.sizes.map(function (s) { return Number(s).toLocaleString(); }).join(", ") +
+        "</td><td>" + c.correct_runs + '</td><td class="mono">' + (r ? Number(r[0]).toLocaleString() + " – " + Number(r[1]).toLocaleString() : "-") + "</td></tr>";
+    });
+    $("maCov").innerHTML = rows.join("") || '<tr><td colspan="4"><div class="empty">Nothing measured on this machine yet.</div></td></tr>';
+  });
+}
+
+var EVAL_DONE = false;
+function renderEvaluation() {
+  if (EVAL_DONE) return Promise.resolve();
+  return api("/v1/metrics").then(function (m) {
+    EVAL_DONE = true;
+    var x = m.metrics || {}, g = m.guard || {}, ho = (g.held_out_sizes || {}).with_guard || {};
+    var esc085 = (x.escalation_curve || []).filter(function (e) { return Math.abs(e.threshold - 0.85) < 1e-9; })[0] || {};
+    $("evKpi").innerHTML = [[x.accuracy != null ? pct(x.accuracy) : "-", "picks a best move (rules of thumb " + (x.rules_accuracy != null ? pct(x.rules_accuracy) : "-") + ")"],
+      [x.ece != null ? x.ece.toFixed(3) : "-", "calibration error (target < 0.12)"],
+      [ho.auto != null ? pct(ho.auto) : esc085.coverage != null ? pct(esc085.coverage) : "-", "of decisions auto-run, " + (ho.auto_accuracy != null ? pct(ho.auto_accuracy) : "-") + " of them best moves"],
+      [x.regret_model ? x.regret_model.made_slower_pct + "%" : "-", "of moves made a job slower (rules " + (x.regret_rules ? x.regret_rules.made_slower_pct + "%" : "-") + ")"]]
+      .map(function (k) { return '<div class="kpi"><div class="v">' + esc(k[0]) + '</div><div class="k">' + esc(k[1]) + "</div></div>"; }).join("");
+    var rp = (m.replay || {}).summary || [];
+    $("evReplay").innerHTML = rp.map(function (s) {
+      var me = s.policy.indexOf("HPC-DS1") === 0;
+      return "<tr><td>" + (me ? "<b>" + esc(s.policy) + "</b>" : esc(s.policy)) + "</td><td>" + s.pct_of_best_config + '%</td><td style="width:40%"><div class="hbar"><i style="width:' + s.pct_of_best_config + "%;" + (me ? "" : "background:#b7b7bf") + '"></i></div></td><td>' + s.mean_experiments + "</td></tr>";
+    }).join("") || '<tr><td colspan="4"><div class="empty">results/metrics.json not found next to this install.</div></td></tr>';
+    $("evGuard").innerHTML = (g.unseen_kernels || []).map(function (u) {
+      return '<tr><td class="mono">' + esc(u.held_out) + "</td><td>" + u.flagged_pct + "%</td><td>" + u.flagged_by_distance_only_pct + "%</td><td>" + (u.confident_wrong_before != null ? u.confident_wrong_before + " → <b>" + u.confident_wrong_after + "</b>" : "-") + "</td></tr>";
+    }).join("") || '<tr><td colspan="4"><div class="empty">Run scripts/fit_guard.py to produce results/guard.json.</div></td></tr>';
+  });
+}
+
+/* =====================================================================
+   playground (Jev-style typed questions over the model's heads)
+   ===================================================================== */
+var KNOWN = { next_move: "choice", route: "route", familiar: "noul", should_stop: "noul", expected_gain: "score" };
+var DEFAULT_QS = {
+  next_move: { type: "choice", question: "Which single change should I make next?",
+    options: ["ADD_RANKS", "REMOVE_RANKS", "ADD_THREADS", "REMOVE_THREADS", "USE_GPU", "USE_CPU", "USE_BF16", "USE_FP32", "STOP_TUNING"] },
+  route: { type: "route", question: "Run it automatically, ask to confirm, or escalate to an engineer?", auto_at: 0.85, escalate_below: 0.5 },
+  familiar: { type: "noul", question: "Has the model seen jobs like this on this machine?" },
+  should_stop: { type: "noul", question: "Is this configuration already as fast as it gets?" },
+  expected_gain: { type: "score", question: "How much faster can this job get from here?", levels: "0-100%" }
+};
+var PRESETS = [
+  ["Stencil 160 · slow start", { workload: "stencil", size: 160, config: { ranks: 1, threads: 1, gpu: false, precision: "fp32" } }],
+  ["Matrix multiply 2048 · 2×4 CPU", { workload: "gemm", size: 2048, config: { ranks: 2, threads: 4, gpu: false, precision: "fp32" } }],
+  ["Monte Carlo 8M · 1 thread", { workload: "montecarlo", size: 8000000, config: { ranks: 1, threads: 1, gpu: false, precision: "fp32" } }],
+  ["FFT 192 · on GPU", { workload: "fft", size: 192, config: { ranks: 1, threads: 4, gpu: true, precision: "fp32" } }],
+  ["Unfamiliar · matmul 512 (never measured)", { workload: "gemm", size: 512, config: { ranks: 1, threads: 2, gpu: false, precision: "fp32" } }],
+  ["Telemetry given · no run", { workload: "nbody", size: 4096, config: { ranks: 1, threads: 1, gpu: false, precision: "fp32" },
+    telemetry: { runtime_sec: 0.42, cpu_util_pct: 6.2, gpu_busy_pct: 0, comm_overhead_pct: 0 } }]
+];
+function gutter(ta, g) { var n = ta.value.split("\n").length, s = ""; for (var i = 1; i <= n; i++) s += i + "\n"; g.textContent = s; g.scrollTop = ta.scrollTop; }
+function countQs() { try { $("pgQn").textContent = Object.keys(JSON.parse($("pgQs").value)).length + " questions"; } catch (e) { $("pgQn").textContent = "invalid JSON"; } }
+[["pgState", "gState"], ["pgQs", "gQs"]].forEach(function (p) {
+  var ta = $(p[0]), g = $(p[1]);
+  ta.addEventListener("input", function () { gutter(ta, g); countQs(); });
+  ta.addEventListener("scroll", function () { g.scrollTop = ta.scrollTop; });
+  ta.addEventListener("keydown", function (e) {
+    if (e.key === "Tab") { e.preventDefault(); ta.setRangeText("  ", ta.selectionStart, ta.selectionEnd, "end"); gutter(ta, g); }
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); pgRun(); }
+  });
+});
+function setJSON(id, obj) { $(id).value = JSON.stringify(obj, null, 2); gutter($(id), $(id === "pgState" ? "gState" : "gQs")); countQs(); }
+PRESETS.forEach(function (p, i) { var o = document.createElement("option"); o.value = i; o.textContent = p[0]; $("pgPreset").appendChild(o); });
+$("pgPreset").addEventListener("change", function () { setJSON("pgState", PRESETS[+this.value][1]); });
+$("pgClear").addEventListener("click", function () { setJSON("pgQs", DEFAULT_QS); $("pgRows").innerHTML = ""; $("pgMeta").textContent = ""; $("pgErr").textContent = ""; });
+$("pgFmt").addEventListener("click", function () { ["pgState", "pgQs"].forEach(function (id) { try { setJSON(id, JSON.parse($(id).value)); } catch (e) {} }); });
+setJSON("pgState", PRESETS[0][1]); setJSON("pgQs", DEFAULT_QS);
+$("pgRun").addEventListener("click", pgRun);
+
+function pgRun() {
+  var state, qs; $("pgErr").textContent = "";
+  try { state = JSON.parse($("pgState").value); } catch (e) { $("pgErr").textContent = "State is not valid JSON"; return; }
+  try { qs = JSON.parse($("pgQs").value); } catch (e) { $("pgErr").textContent = "Questions are not valid JSON"; return; }
+  var body = { workload: state.workload, size: state.size, config: state.config, source: "playground" };
+  if (state.telemetry) body.telemetry = state.telemetry;
+  if (qs.next_move && qs.next_move.options) body.candidates = qs.next_move.options;
+  if (qs.route) { if (qs.route.auto_at != null) body.threshold = qs.route.auto_at; if (qs.route.escalate_below != null) body.escalate_below = qs.route.escalate_below; }
+  $("pgThr").textContent = "auto ≥ " + (body.threshold != null ? body.threshold : 0.85) + " · escalate < " + (body.escalate_below != null ? body.escalate_below : 0.5);
+  $("pgRun").disabled = true; $("pgRun").textContent = state.telemetry ? "Deciding…" : "Running job…";
+  api("/v1/decide", body).then(function (d) { pgRender(d, qs); })
+    .catch(function (e) { $("pgErr").textContent = e.message; })
+    .then(function () { $("pgRun").disabled = false; $("pgRun").textContent = "Run"; refreshBadge(); });
+}
+function ring(p) {
+  var c = 2 * Math.PI * 5, on = Math.max(0.02, p) * c;
+  return '<svg class="ring" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="none" stroke="#dbe6fb" stroke-width="2.4"/><circle cx="7" cy="7" r="5" fill="none" stroke="#2f6fe4" stroke-width="2.4" stroke-dasharray="' + on.toFixed(1) + " " + c.toFixed(1) + '" transform="rotate(-90 7 7)"/></svg>';
+}
+function noul(p, label) { return '<div class="main">' + pct(p) + "<small>" + label + '</small></div><div class="track"><i style="left:' + p * 100 + "%;background:" + (p >= 0.5 ? "var(--ok)" : "var(--bad)") + '"></i></div>'; }
+function qrow(key, spec, ans, badge, sub, extra) {
+  return '<div class="row"><div class="chev" onclick="this.parentNode.classList.toggle(\'collapsed\')">⌄</div><div><div class="k">' + esc(key) + "</div>" +
+    (spec.question ? '<div class="q">' + esc(spec.question) + "</div>" : "") + (extra ? '<div class="extra">' + extra + "</div>" : "") + '</div><div class="ans">' + ans +
+    '</div><div class="badge"><b>' + badge + "</b>" + (sub ? "<div>" + sub + "</div>" : "") + "</div></div>";
+}
+function pgRender(d, qs) {
+  var t = d.state && d.state.telemetry, html = "";
+  $("pgMeta").textContent = "hpc-ds1 · " + (d.telemetry_source === "measured now" ? "measured live" : "telemetry given") + " · " + d.latency_ms.toFixed(1) + " ms";
+  Object.keys(qs).forEach(function (key) {
+    var spec = qs[key] || {};
+    if (!KNOWN[key]) { html += qrow(key, spec, '<div class="reasons">HPC-DS1 doesn\'t answer this question.</div><div class="conf">It answers: ' + Object.keys(KNOWN).join(", ") + "</div>", "-", ""); return; }
+    if (key === "next_move") {
+      var ps = Object.keys(d.probabilities).map(function (a) { return [a, d.probabilities[a]]; }).sort(function (a, b) { return b[1] - a[1]; });
+      html += qrow(key, spec, '<div class="opts">' + ps.slice(0, 4).map(function (p, i) { return '<span class="o' + (i ? "" : " top") + '">' + esc(p[0].toLowerCase()) + "</span><span>" + pct(p[1]) + "</span>" + ring(p[1]); }).join("") +
+        '</div><div class="conf">Confidence: ' + pct(d.confidence) + "</div>", "Choice", ps.length + " options",
+        d.ignored_candidates && d.ignored_candidates.length ? "not valid from this config: " + esc(d.ignored_candidates.join(", ").toLowerCase()) : "");
+    } else if (key === "route") {
+      html += qrow(key, spec, pill(d.mode) + '<div class="conf">' + (d.mode === "auto" ? "Runs " + esc(d.choice.toLowerCase()) + " without asking" : d.mode === "confirm" ? "One-click approval for " + esc(d.choice.toLowerCase()) : "Hands the decision to an engineer") + "</div>" +
+        (d.reasons.length ? '<div class="reasons">' + d.reasons.map(esc).join("<br>") + "</div>" : ""), "Route", "3 tiers", "auto_at " + d.threshold + " · escalate_below " + d.escalate_below);
+    } else if (key === "familiar") {
+      html += qrow(key, spec, noul(d.familiar ? 1 : 0, d.familiar ? "true" : "false") + '<div class="conf">' + (d.novelty == null ? "No guard in this checkpoint" : "Nearest training run: " + d.novelty.toFixed(2) + "× the familiar range") + "</div>", "Noul", "guard", "");
+    } else if (key === "should_stop") {
+      html += qrow(key, spec, noul(d.stop_probability, "true"), "Noul", "stop head", "");
+    } else {
+      html += qrow(key, spec, '<div class="main">' + pct(d.expected_improvement) + '<small>faster</small></div><div class="conf">Runtime ×' + (1 - d.expected_improvement).toFixed(2) + " if tuning continues well</div>", "Score", spec.levels || "0-100%", "");
+    }
+  });
+  if (t) html = '<div class="tel">Measured: <span>runtime <b>' + ms(t.runtime_sec) + "</b></span><span>cpu <b>" + t.cpu_util_pct + "%</b></span><span>gpu busy <b>" + t.gpu_busy_pct + "%</b></span><span>comm <b>" + t.comm_overhead_pct + "%</b></span></div>" + html;
+  $("pgRows").innerHTML = html;
+}
+
+/* =====================================================================
+   boot + polling
+   ===================================================================== */
+var RENDER = { overview: renderOverview, fleet: renderFleet, approvals: renderApprovals, tuning: renderTuning, audit: renderAudit, machine: renderMachine, evaluation: renderEvaluation };
+function current() { var h = (location.hash || "").slice(1); return PAGES.indexOf(h) >= 0 ? h : (location.pathname === "/playground" ? "playground" : "overview"); }
+function refreshBadge() { return api("/v1/queue").then(function (q) { $("qCnt").textContent = q.length; $("qCnt").classList.toggle("show", q.length > 0); }).catch(function () {}); }
+function refresh(page) { page = page || current(); refreshBadge(); if (RENDER[page]) RENDER[page]().catch(function (e) { console.warn(page, e.message); }); }
+
+api("/v1/health").then(function (h) {
+  $("sbModel").textContent = "hpc-ds1 · " + (h.parameters / 1e6).toFixed(2) + "M params";
+  $("sbModelSub").textContent = "trained on " + h.trained_on + "\nT=" + h.temperature + " · " + h.device + (h.familiarity_guard ? " · guard on" : " · no guard");
+  $("sbDot").classList.add("live");
+  return api("/v1/schema");
+}).then(function (s) {
+  WORKLOADS = s.workloads; HW = s.hardware;
+  $("sbHw").textContent = HW.name;
+  $("sbHwSub").textContent = HW.cpu_cores + "C/" + HW.cpu_threads + "T · " + HW.ram_gb + " GB\n" + (HW.gpu_model || "no GPU");
+  jobForm($("flForm"), "Submit to fleet", function (b, btn) {
+    $("flErr").textContent = ""; btn.disabled = true;
+    api("/v1/fleet/tasks", b).then(renderFleet).catch(function (e) { $("flErr").textContent = e.message; }).then(function () { btn.disabled = false; });
+  });
+  jobForm($("tuForm"), "Start tuning", function (b, btn) {
+    $("tuErr").textContent = ""; btn.disabled = true;
+    api("/v1/sessions", b).then(function (s) { OPEN_SESSION = s.id; return renderTuning(); }).catch(function (e) { $("tuErr").textContent = e.message; }).then(function () { btn.disabled = false; });
+  });
+  route();
+}).catch(function () {
+  $("sbModelSub").textContent = "server not reachable: run hpc-ds1 serve";
+  $("sbDot").classList.add("off");
+  route();
+});
+setInterval(function () { var p = current(); if (p !== "playground" && p !== "evaluation" && p !== "machine" && p !== "integrate") refresh(p); else refreshBadge(); }, 2500);
+</script>
+</body>
+</html>
