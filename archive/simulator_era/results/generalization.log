@@ -1,0 +1,169 @@
+device cuda; 17614 states
+
+=== leave one workload out ===
+  [small] epoch   1  train 2.4507/0.561  val 0.9668/0.617
+  [small] epoch   5  train 0.4689/0.898  val 0.2260/0.925
+  [small] epoch  10  train 0.2845/0.936  val 0.1822/0.923
+  [small] epoch  15  train 0.2019/0.954  val 0.1456/0.943
+  [small] epoch  20  train 0.1632/0.964  val 0.1105/0.960
+  [small] epoch  25  train 0.1116/0.974  val 0.0844/0.974
+  [small] epoch  30  train 0.0693/0.984  val 0.0808/0.978
+  [small] epoch  35  train 0.0419/0.992  val 0.0874/0.980
+  [small] epoch  40  train 0.0310/0.995  val 0.0792/0.983
+  held out nbody                acc 0.811 (heuristic 0.530)  ECE 0.117  regret 1.37%  closed loop 96.3% of oracle (heuristic 64.8%)
+  [small] epoch   1  train 2.4380/0.529  val 0.9073/0.667
+  [small] epoch   5  train 0.4874/0.889  val 0.2923/0.887
+  [small] epoch  10  train 0.3100/0.921  val 0.1777/0.923
+  [small] epoch  15  train 0.2258/0.942  val 0.1472/0.937
+  [small] epoch  20  train 0.1635/0.955  val 0.1289/0.946
+  [small] epoch  25  train 0.1124/0.969  val 0.0925/0.971
+  [small] epoch  30  train 0.0814/0.979  val 0.0842/0.972
+  [small] epoch  35  train 0.0526/0.987  val 0.0690/0.983
+  [small] epoch  40  train 0.0434/0.990  val 0.0728/0.983
+  held out gemm                 acc 0.909 (heuristic 0.684)  ECE 0.066  regret 0.57%  closed loop 95.9% of oracle (heuristic 83.8%)
+  [small] epoch   1  train 2.4034/0.559  val 0.7846/0.753
+  [small] epoch   5  train 0.4744/0.896  val 0.2384/0.916
+  [small] epoch  10  train 0.2693/0.936  val 0.1252/0.946
+  [small] epoch  15  train 0.1996/0.954  val 0.0977/0.963
+  [small] epoch  20  train 0.1391/0.968  val 0.0791/0.971
+  [small] epoch  25  train 0.1029/0.977  val 0.0597/0.978
+  [small] epoch  30  train 0.0636/0.985  val 0.0637/0.980
+  [small] epoch  35  train 0.0439/0.988  val 0.0642/0.980
+  [small] epoch  40  train 0.0357/0.992  val 0.0584/0.981
+  held out montecarlo           acc 0.698 (heuristic 0.492)  ECE 0.253  regret 1.99%  closed loop 99.2% of oracle (heuristic 85.7%)
+  [small] epoch   1  train 2.4957/0.520  val 0.9774/0.661
+  [small] epoch   5  train 0.5100/0.882  val 0.2497/0.902
+  [small] epoch  10  train 0.3262/0.922  val 0.1747/0.924
+  [small] epoch  15  train 0.2711/0.934  val 0.1823/0.924
+  [small] epoch  20  train 0.2131/0.945  val 0.1383/0.945
+  [small] epoch  25  train 0.1401/0.963  val 0.0789/0.972
+  [small] epoch  30  train 0.0949/0.974  val 0.0795/0.971
+  [small] epoch  35  train 0.0643/0.983  val 0.0801/0.973
+  [small] early stop at epoch 39 (best epoch 29)
+  held out stencil              acc 0.824 (heuristic 0.596)  ECE 0.146  regret 9.22%  closed loop 85.6% of oracle (heuristic 56.1%)
+  [small] epoch   1  train 2.4625/0.515  val 1.0067/0.645
+  [small] epoch   5  train 0.5100/0.882  val 0.3754/0.853
+  [small] epoch  10  train 0.3518/0.916  val 0.1996/0.920
+  [small] epoch  15  train 0.2583/0.938  val 0.1489/0.933
+  [small] epoch  20  train 0.1865/0.952  val 0.1696/0.936
+  [small] epoch  25  train 0.1379/0.965  val 0.1447/0.941
+  [small] epoch  30  train 0.0860/0.977  val 0.1245/0.965
+  [small] epoch  35  train 0.0593/0.984  val 0.1151/0.962
+  [small] epoch  40  train 0.0496/0.987  val 0.1240/0.965
+  held out spmv                 acc 0.745 (heuristic 0.628)  ECE 0.194  regret 36.88%  closed loop 67.3% of oracle (heuristic 50.3%)
+  [small] epoch   1  train 2.5105/0.494  val 1.0315/0.614
+  [small] epoch   5  train 0.5493/0.868  val 0.3218/0.864
+  [small] epoch  10  train 0.3285/0.918  val 0.2293/0.898
+  [small] epoch  15  train 0.2532/0.933  val 0.1637/0.928
+  [small] epoch  20  train 0.1780/0.951  val 0.1221/0.951
+  [small] epoch  25  train 0.1272/0.965  val 0.0847/0.971
+  [small] epoch  30  train 0.0889/0.978  val 0.0736/0.971
+  [small] epoch  35  train 0.0567/0.986  val 0.0599/0.980
+  [small] epoch  40  train 0.0484/0.989  val 0.0585/0.982
+  held out fft                  acc 0.708 (heuristic 0.601)  ECE 0.231  regret 28.75%  closed loop 72.0% of oracle (heuristic 42.9%)
+
+=== leave one hardware out ===
+  [small] epoch   1  train 2.4262/0.537  val 0.9389/0.671
+  [small] epoch   5  train 0.5692/0.867  val 0.2933/0.891
+  [small] epoch  10  train 0.3271/0.918  val 0.2493/0.902
+  [small] epoch  15  train 0.2316/0.943  val 0.1378/0.943
+  [small] epoch  20  train 0.1732/0.955  val 0.1551/0.944
+  [small] epoch  25  train 0.1148/0.971  val 0.1177/0.962
+  [small] epoch  30  train 0.0860/0.979  val 0.0967/0.966
+  [small] epoch  35  train 0.0582/0.987  val 0.1030/0.969
+  [small] epoch  40  train 0.0481/0.989  val 0.0948/0.976
+  held out laptop-rtx4050       acc 0.863 (heuristic 0.591)  ECE 0.091  regret 1.02%  closed loop 94.8% of oracle (heuristic 55.0%)
+  [small] epoch   1  train 2.4469/0.513  val 0.9191/0.703
+  [small] epoch   5  train 0.5244/0.876  val 0.2204/0.905
+  [small] epoch  10  train 0.3053/0.927  val 0.1876/0.928
+  [small] epoch  15  train 0.2438/0.940  val 0.1716/0.933
+  [small] epoch  20  train 0.1672/0.956  val 0.1237/0.955
+  [small] epoch  25  train 0.1254/0.966  val 0.1223/0.962
+  [small] epoch  30  train 0.0802/0.980  val 0.0990/0.966
+  [small] epoch  35  train 0.0573/0.987  val 0.0890/0.976
+  [small] epoch  40  train 0.0443/0.990  val 0.0835/0.977
+  held out workstation-rtx4090  acc 0.901 (heuristic 0.476)  ECE 0.063  regret 0.52%  closed loop 97.7% of oracle (heuristic 41.7%)
+  [small] epoch   1  train 2.4485/0.503  val 1.0001/0.638
+  [small] epoch   5  train 0.5143/0.878  val 0.3100/0.869
+  [small] epoch  10  train 0.3131/0.925  val 0.1694/0.922
+  [small] epoch  15  train 0.2200/0.944  val 0.1431/0.942
+  [small] epoch  20  train 0.1757/0.954  val 0.1158/0.958
+  [small] epoch  25  train 0.1203/0.968  val 0.1007/0.958
+  [small] epoch  30  train 0.0769/0.979  val 0.0772/0.970
+  [small] epoch  35  train 0.0549/0.986  val 0.0680/0.978
+  [small] epoch  40  train 0.0432/0.989  val 0.0692/0.979
+  held out hpc-node-a100        acc 0.924 (heuristic 0.471)  ECE 0.042  regret 1.52%  closed loop 99.5% of oracle (heuristic 56.5%)
+  [small] epoch   1  train 2.5516/0.537  val 0.9496/0.657
+  [small] epoch   5  train 0.4971/0.897  val 0.2539/0.888
+  [small] epoch  10  train 0.2875/0.936  val 0.2124/0.919
+  [small] epoch  15  train 0.2175/0.953  val 0.1513/0.942
+  [small] epoch  20  train 0.1893/0.959  val 0.1151/0.960
+  [small] epoch  25  train 0.1053/0.977  val 0.1182/0.964
+  [small] epoch  30  train 0.0768/0.983  val 0.0990/0.973
+  [small] epoch  35  train 0.0464/0.992  val 0.1014/0.971
+  [small] epoch  40  train 0.0373/0.992  val 0.1027/0.974
+  held out cpu-node-64c         acc 0.756 (heuristic 0.701)  ECE 0.117  regret 12.98%  closed loop 94.8% of oracle (heuristic 71.5%)
+  [small] epoch   1  train 2.5158/0.536  val 1.0572/0.609
+  [small] epoch   5  train 0.5514/0.876  val 0.2567/0.902
+  [small] epoch  10  train 0.3298/0.922  val 0.2429/0.899
+  [small] epoch  15  train 0.2418/0.941  val 0.1678/0.938
+  [small] epoch  20  train 0.1666/0.956  val 0.1299/0.945
+  [small] epoch  25  train 0.1318/0.966  val 0.0990/0.960
+  [small] epoch  30  train 0.0852/0.977  val 0.0912/0.970
+  [small] epoch  35  train 0.0596/0.984  val 0.0728/0.974
+  [small] epoch  40  train 0.0460/0.990  val 0.0632/0.980
+  held out small-vm-4c          acc 0.610 (heuristic 0.770)  ECE 0.275  regret 9.36%  closed loop 86.5% of oracle (heuristic 98.0%)
+
+=== input ablations (standard split) ===
+  [small] epoch   1  train 2.4362/0.528  val 0.9182/0.690
+  [small] epoch   5  train 0.5065/0.885  val 0.3068/0.873
+  [small] epoch  10  train 0.2969/0.926  val 0.1879/0.920
+  [small] epoch  15  train 0.2224/0.946  val 0.1295/0.941
+  [small] epoch  20  train 0.1660/0.958  val 0.1300/0.947
+  [small] epoch  25  train 0.1139/0.971  val 0.1024/0.963
+  [small] epoch  30  train 0.0768/0.981  val 0.0840/0.971
+  [small] epoch  35  train 0.0581/0.985  val 0.0872/0.970
+  [small] epoch  40  train 0.0464/0.988  val 0.0852/0.972
+  full model             acc 0.982  ECE 0.004  regret 0.05%  auto@0.85 0.953
+  [small] epoch   1  train 2.4715/0.498  val 1.0319/0.601
+  [small] epoch   5  train 0.6494/0.862  val 0.3823/0.842
+  [small] epoch  10  train 0.4123/0.903  val 0.2506/0.894
+  [small] epoch  15  train 0.3004/0.924  val 0.2169/0.914
+  [small] epoch  20  train 0.2465/0.937  val 0.1700/0.926
+  [small] epoch  25  train 0.1751/0.955  val 0.1236/0.952
+  [small] epoch  30  train 0.1197/0.973  val 0.0955/0.965
+  [small] epoch  35  train 0.0830/0.981  val 0.0912/0.969
+  [small] epoch  40  train 0.0700/0.985  val 0.0804/0.970
+  no telemetry           acc 0.978  ECE 0.004  regret 0.08%  auto@0.85 0.949
+  [small] epoch   1  train 2.4385/0.522  val 0.9349/0.690
+  [small] epoch   5  train 0.7484/0.825  val 0.4082/0.823
+  [small] epoch  10  train 0.5995/0.857  val 0.3298/0.844
+  [small] epoch  15  train 0.4914/0.876  val 0.2437/0.897
+  [small] epoch  20  train 0.4446/0.894  val 0.2824/0.873
+  [small] epoch  25  train 0.3875/0.906  val 0.1952/0.905
+  [small] epoch  30  train 0.3258/0.921  val 0.1799/0.914
+  [small] epoch  35  train 0.2937/0.925  val 0.1545/0.931
+  [small] epoch  40  train 0.2754/0.932  val 0.1383/0.938
+  no current config      acc 0.938  ECE 0.012  regret 0.41%  auto@0.85 0.862
+  [small] epoch   1  train 2.4245/0.508  val 0.9389/0.673
+  [small] epoch   5  train 0.5590/0.884  val 0.2960/0.876
+  [small] epoch  10  train 0.3686/0.922  val 0.1592/0.942
+  [small] epoch  15  train 0.2829/0.942  val 0.1438/0.939
+  [small] epoch  20  train 0.2488/0.952  val 0.1333/0.948
+  [small] epoch  25  train 0.1768/0.966  val 0.1047/0.953
+  [small] epoch  30  train 0.1247/0.974  val 0.0745/0.972
+  [small] epoch  35  train 0.0959/0.982  val 0.0776/0.970
+  [small] epoch  40  train 0.0825/0.985  val 0.0711/0.973
+  no hardware            acc 0.982  ECE 0.005  regret 0.04%  auto@0.85 0.951
+  [small] epoch   1  train 2.4237/0.529  val 0.8895/0.716
+  [small] epoch   5  train 0.5686/0.867  val 0.3452/0.844
+  [small] epoch  10  train 0.3477/0.916  val 0.1775/0.926
+  [small] epoch  15  train 0.2406/0.939  val 0.1570/0.932
+  [small] epoch  20  train 0.1759/0.956  val 0.1376/0.952
+  [small] epoch  25  train 0.1385/0.966  val 0.1208/0.959
+  [small] epoch  30  train 0.0886/0.978  val 0.0857/0.968
+  [small] epoch  35  train 0.0648/0.983  val 0.0742/0.976
+  [small] epoch  40  train 0.0484/0.988  val 0.0803/0.977
+  no workload identity   acc 0.976  ECE 0.005  regret 0.06%  auto@0.85 0.951
+
+saved D:\Radiants\Projects\kairo\results\generalization.json and updated model_internals.json (580.5s)

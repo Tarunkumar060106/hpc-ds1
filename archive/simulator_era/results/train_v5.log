@@ -1,0 +1,72 @@
+device: cuda (NVIDIA GeForce RTX 4050 Laptop GPU)
+states: train 14040  val 1818  test 1756
+
+== training small ({'dim': 256, 'encoder_blocks': 1, 'fusion_layers': 2, 'heads': 4, 'ffn_dim': 1024}) ==
+  [small] epoch   1  train 2.5095/0.515  val 1.0354/0.592
+  [small] epoch   5  train 0.5064/0.886  val 0.3206/0.866
+  [small] epoch  10  train 0.3371/0.920  val 0.2313/0.900
+  [small] epoch  15  train 0.2426/0.941  val 0.1467/0.936
+  [small] epoch  20  train 0.2127/0.944  val 0.1426/0.943
+  [small] epoch  25  train 0.1549/0.960  val 0.1706/0.927
+  [small] epoch  30  train 0.1377/0.965  val 0.1138/0.955
+  [small] epoch  35  train 0.1042/0.971  val 0.1027/0.960
+  [small] epoch  40  train 0.0773/0.980  val 0.0958/0.963
+  [small] epoch  45  train 0.0562/0.984  val 0.0970/0.966
+  [small] early stop at epoch 49 (best epoch 39)
+  [small] params 2,352,910  val 0.0756/0.969  test acc 0.979  36.5s  peak 171.3 MB
+
+== training medium ({'dim': 512, 'encoder_blocks': 2, 'fusion_layers': 3, 'heads': 8, 'ffn_dim': 2048}) ==
+  [medium] epoch   1  train 2.3751/0.553  val 0.9220/0.692
+  [medium] epoch   5  train 0.4897/0.890  val 0.3042/0.872
+  [medium] epoch  10  train 0.3250/0.922  val 0.1630/0.928
+  [medium] epoch  15  train 0.2584/0.936  val 0.2270/0.914
+  [medium] epoch  20  train 0.1835/0.954  val 0.1393/0.943
+  [medium] epoch  25  train 0.1666/0.959  val 0.1430/0.938
+  [medium] epoch  30  train 0.1259/0.969  val 0.1446/0.943
+  [medium] epoch  35  train 0.0998/0.974  val 0.1074/0.962
+  [medium] epoch  40  train 0.0662/0.981  val 0.1065/0.970
+  [medium] early stop at epoch 42 (best epoch 32)
+  [medium] params 14,616,590  val 0.0833/0.964  test acc 0.966  75.9s  peak 537.4 MB
+
+== training large ({'dim': 768, 'encoder_blocks': 3, 'fusion_layers': 4, 'heads': 12, 'ffn_dim': 3072}) ==
+  [large] epoch   1  train 2.2747/0.528  val 0.8239/0.737
+  [large] epoch   5  train 0.5002/0.889  val 0.3107/0.877
+  [large] epoch  10  train 0.3097/0.926  val 0.2366/0.918
+  [large] epoch  15  train 0.2446/0.942  val 0.1667/0.937
+  [large] epoch  20  train 0.2004/0.948  val 0.1357/0.946
+  [large] epoch  25  train 0.1632/0.960  val 0.1417/0.944
+  [large] epoch  30  train 0.1282/0.965  val 0.1320/0.952
+  [large] epoch  35  train 0.0966/0.974  val 0.1074/0.959
+  [large] epoch  40  train 0.0743/0.982  val 0.0852/0.971
+  [large] epoch  45  train 0.0459/0.988  val 0.0864/0.976
+  [large] epoch  50  train 0.0258/0.994  val 0.1016/0.979
+  [large] early stop at epoch 53 (best epoch 43)
+  [large] params 44,655,374  val 0.0767/0.974  test acc 0.979  252.2s  peak 1348.3 MB
+
+selected: small (lowest val loss 0.07565)
+temperature 1.275  ECE 0.0055 -> 0.0066
+
+test acc 0.9795  top2 0.9994  heuristic 0.6241  majority 0.3633
+stop head 0.9943  bottleneck 0.9932  improvement MAE 0.0193
+regret: model {'mean_regret_pct': 0.03, 'median_regret_pct': 0.0, 'within_1pct_of_best_pct': 99.09, 'made_things_worse_pct': 0.23}  heuristic {'mean_regret_pct': 14.37, 'median_regret_pct': 0.0, 'within_1pct_of_best_pct': 70.9, 'made_things_worse_pct': 5.47}
+  threshold 0.00: auto 100.0%  acc 0.9795
+  threshold 0.30: auto 100.0%  acc 0.9795
+  threshold 0.50: auto  99.9%  acc 0.9795
+  threshold 0.60: auto  98.3%  acc 0.9855
+  threshold 0.70: auto  96.9%  acc 0.9894
+  threshold 0.80: auto  95.0%  acc 0.9952
+  threshold 0.85: auto  94.0%  acc 0.9976
+  threshold 0.90: auto  92.6%  acc 0.9982
+  threshold 0.95: auto  90.4%  acc 0.9987
+  threshold 0.97: auto  87.6%  acc 0.9987
+  threshold 0.99: auto  82.8%  acc 0.9993
+saved D:\Radiants\Projects\kairo\model\hpc_ds1_v5.pt
+
+== closed-loop tuning: 300 fresh scenarios ==
+  HPC-DS1 (autonomous)         speedup x10.31   100.0% of oracle  experiments  5.14  escalations 0.00
+  HPC-DS1 + escalation @0.85   speedup x10.31   100.0% of oracle  experiments  5.13  escalations 0.16
+  Expert heuristic             speedup x6.394    62.0% of oracle  experiments  4.22  escalations 0.00
+  Random search (8 tries)      speedup x3.978    38.6% of oracle  experiments  9.00  escalations 0.00
+  Exhaustive oracle            speedup x10.311  100.0% of oracle  experiments 26.02  escalations 0.00
+
+exported 18 traces -> visualizer/model_internals.json

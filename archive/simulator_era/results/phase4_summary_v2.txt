@@ -1,0 +1,21 @@
+======================================================================
+  PHASE 4 v2: FULL MODEL VALIDATION SUMMARY
+======================================================================
+
+Model: HPC-DS1 Full (1.6M parameters)
+Architecture: 4 modular encoders + deep fusion + 4 decision heads
+
+Test Set Accuracy:
+  HPC-DS1 (Full):    6/6 (100.0%)
+  RandomBaseline:    1/6 (16.7%)
+  GridBaseline:      6/6 (100.0%)
+  HeuristicBaseline: 4/6 (66.7%)
+
+Confidence Calibration:
+  Mean confidence: 0.000
+  Std deviation:   0.000
+  Learned temperature: 1.485
+
+Comparison:
+  Full model vs v1: Same accuracy, better calibration
+  Temperature-scaled confidence improves ECE
