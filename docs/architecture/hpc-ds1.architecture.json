@@ -1,0 +1,290 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "HPC-DS1 Architecture",
+    "locale": "en",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "collector",
+      "type": "backend",
+      "label": "Kernels + Runner",
+      "sublabel": "collect.py",
+      "pos": [
+        40,
+        140
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "6 workloads × 44 configs"
+    },
+    {
+      "id": "measurements",
+      "type": "database",
+      "label": "Measurements",
+      "sublabel": "1,584 real runs",
+      "pos": [
+        260,
+        140
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "dataset",
+      "type": "backend",
+      "label": "Dataset + Labels",
+      "sublabel": "best-path first move",
+      "pos": [
+        470,
+        140
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "training",
+      "type": "backend",
+      "label": "HPCDS1Net",
+      "sublabel": "train.py · 2.85M params",
+      "pos": [
+        720,
+        140
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "model",
+      "type": "database",
+      "label": "Trained Model",
+      "sublabel": "calibrated weights",
+      "pos": [
+        930,
+        140
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "hardware",
+      "type": "cloud",
+      "label": "This Machine",
+      "sublabel": "CPU ranks/threads · GPU",
+      "pos": [
+        40,
+        400
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "tuner",
+      "type": "backend",
+      "label": "Tuner Loop",
+      "sublabel": "run · check · revert",
+      "pos": [
+        470,
+        400
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "HPCDS1 API",
+      "sublabel": "observe · decide · tune",
+      "pos": [
+        930,
+        400
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "confidence ≥ 0.85"
+    },
+    {
+      "id": "clients",
+      "type": "frontend",
+      "label": "Plug-in Surfaces",
+      "sublabel": "Python · CLI · HTTP · UI",
+      "pos": [
+        1170,
+        400
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "engineer",
+      "type": "external",
+      "label": "Engineer",
+      "sublabel": "reviews unsure moves",
+      "pos": [
+        930,
+        600
+      ],
+      "size": [
+        150,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Offline: measure & learn (once per machine)",
+      "wraps": [
+        "collector",
+        "measurements",
+        "dataset",
+        "training",
+        "model"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Online: decide & tune",
+      "wraps": [
+        "hardware",
+        "tuner",
+        "api"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "collect-runs",
+      "from": "collector",
+      "to": "measurements",
+      "label": "timings"
+    },
+    {
+      "id": "build-labels",
+      "from": "measurements",
+      "to": "dataset"
+    },
+    {
+      "id": "train-net",
+      "from": "dataset",
+      "to": "training",
+      "label": "soft targets"
+    },
+    {
+      "id": "export-model",
+      "from": "training",
+      "to": "model"
+    },
+    {
+      "id": "measure-hw",
+      "from": "collector",
+      "to": "hardware",
+      "label": "run every config",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        115,
+        300
+      ]
+    },
+    {
+      "id": "load-model",
+      "from": "model",
+      "to": "api",
+      "label": "load",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        1005,
+        300
+      ],
+      "variant": "emphasis"
+    },
+    {
+      "id": "client-calls",
+      "from": "clients",
+      "to": "api",
+      "label": "decide / tune",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "id": "next-move",
+      "from": "api",
+      "to": "tuner",
+      "label": "next move",
+      "fromSide": "left",
+      "toSide": "right",
+      "variant": "emphasis"
+    },
+    {
+      "id": "live-run",
+      "from": "tuner",
+      "to": "hardware",
+      "label": "run & measure",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "id": "escalate",
+      "from": "api",
+      "to": "engineer",
+      "label": "low confidence",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        1005,
+        532
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Offline",
+      "items": [
+        "Time every config on real hardware",
+        "Label the first move of the best path",
+        "Train and calibrate the network"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Online",
+      "items": [
+        "Model suggests one move at a time",
+        "Tuner runs it, reverts if slower",
+        "Stops after 2 misses in a row"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Safety",
+      "items": [
+        "Unsure decisions go to an engineer",
+        "Wrong answers checked vs fp32 reference"
+      ]
+    }
+  ]
+}
