@@ -113,10 +113,12 @@ class HPCDS1:
         guard = FamiliarityGuard.from_dict(ckpt["guard"]) if ckpt.get("guard") else None
         model = cls(net, device, ckpt.get("meta"), guard)
         model.path = path
-        s1 = path.parent / "system1.pt"
+        own = home_dir() / "model" / "system1.pt"  # written by `hpc-ds1 learn`
+        s1 = own if own.exists() else path.parent / "system1.pt"
         if s1.exists():
             from .system1 import System1
             model.system1 = System1.load(s1, device="cpu")
+            model.system1_path = s1
         return model
 
     # ------------------------------------------------------------------ engine

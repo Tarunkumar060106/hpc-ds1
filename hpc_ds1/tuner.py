@@ -11,8 +11,13 @@ A runner turns a config into telemetry:
 Both return None when a config fails or produces a wrong answer.
 """
 
+import json
+import os
 import random
+import threading
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
@@ -62,8 +67,40 @@ def build_state(hardware, workload, size, config, telemetry):
             "config": make_config(**config), "telemetry": dict(telemetry)}
 
 
+_LOG_LOCK = threading.Lock()
+
+
+def live_log_path():
+    """Where real runs made while using HPC-DS1 are kept (System 2 teaching System 1)."""
+    home = Path(os.environ.get("HPC_DS1_HOME", Path.home() / ".hpc_ds1"))
+    return home / "data" / "live_runs.jsonl"
+
+
+def log_live_run(hardware, workload, size, config, result, err=None, error=None):
+    """Append one real run, in the same format as the collected measurements.
+    Off with HPC_DS1_LOG_LIVE=0. Never lets a logging problem break a job."""
+    if os.environ.get("HPC_DS1_LOG_LIVE", "1") == "0":
+        return
+    row = {"workload": workload, "size": int(size), "config": make_config(**config), "ok": result["ok"],
+           "hardware": hardware.get("name"), "source": "live",
+           "measured_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    if result["ok"]:
+        row.update(telemetry=result["telemetry"], rel_error=err,
+                   correct=err is not None and err <= KERNELS[workload].tolerance)
+    else:
+        row["error"] = error or result.get("error")
+    try:
+        path = live_log_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with _LOG_LOCK, open(path, "a") as f:
+            f.write(json.dumps(row) + "\n")
+    except OSError:
+        pass
+
+
 class LiveRunner:
-    """Runs configs for real and rejects results that disagree with fp32."""
+    """Runs configs for real and rejects results that disagree with fp32.
+    Every run is also logged for `hpc-ds1 learn` (see log_live_run)."""
 
     def __init__(self, workload, size, engine=None):
         self.workload, self.size = workload, size
@@ -83,10 +120,12 @@ class LiveRunner:
     def __call__(self, config):
         r = self.engine.measure(self.workload, self.size, config)
         if not r["ok"]:
+            log_live_run(self.hardware, self.workload, self.size, config, r)
             return None
         a = np.asarray(r["result"]).astype(np.complex128 if np.iscomplexobj(r["result"]) else np.float64)
         b = np.asarray(self.reference()).astype(a.dtype)
         err = float(np.linalg.norm(a - b) / max(np.linalg.norm(b), 1e-30))
+        log_live_run(self.hardware, self.workload, self.size, config, r, err)
         if err > KERNELS[self.workload].tolerance:
             return None
         return r["telemetry"]

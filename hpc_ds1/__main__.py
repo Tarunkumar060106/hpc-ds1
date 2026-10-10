@@ -1,4 +1,4 @@
-"""Command line: hpc-ds1 (or python -m hpc_ds1) {setup,serve,agent,submit,decide,tune,tasks,info}"""
+"""Command line: hpc-ds1 (or python -m hpc_ds1) {setup,serve,agent,submit,predict,plan,learn,decide,tune,tasks,info}"""
 
 import argparse
 import json
@@ -60,6 +60,7 @@ def main():
     n.add_argument("--size", type=int, required=True)
     n.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
     n.add_argument("--checkpoint")
+    sub.add_parser("learn", help="System 2 teaches System 1: retrain the instant model on every real run made here")
     d = sub.add_parser("decide", help="run the job once for real, then ask the model what to change")
     _job_args(d)
     d.add_argument("--candidates", help="comma-separated subset of actions")
@@ -96,6 +97,15 @@ def main():
         for c in t["placement"]["candidates"]:
             est = f"{c['finish_sec']:.4g}s" if c["finish_sec"] is not None else c["note"]
             print(f"  {c['name']:20s} {est}")
+        return
+
+    if args.cmd == "learn":
+        from .learn import learn
+        try:
+            prev = HPCDS1.load(device="cpu").system1
+        except (FileNotFoundError, ValueError):
+            prev = None
+        learn(prev, log=lambda m: print(m, flush=True))
         return
 
     if args.cmd == "tasks":
