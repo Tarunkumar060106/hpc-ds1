@@ -1,0 +1,263 @@
+{
+  "good_within": 1.05,
+  "threshold": 0.85,
+  "system1_cv": {
+    "problems": 48,
+    "pick_within_5pct": 0.8542,
+    "pct_of_best_speed": 97.0,
+    "picked_failing_config": 0,
+    "confidence_ece_leave_one_out": 0.0001,
+    "reliability": [
+      {
+        "lo": 0.8,
+        "hi": 0.9,
+        "count": 48,
+        "accuracy": 0.8542,
+        "confidence": 0.8543
+      }
+    ],
+    "auto_share_at_085": 0.875,
+    "auto_within_5pct": 0.8333,
+    "auto_pct_of_best": 96.7,
+    "per_workload": {
+      "gemm": {
+        "within_5pct": 1.0,
+        "pct_of_best": 98.5
+      },
+      "fft": {
+        "within_5pct": 0.667,
+        "pct_of_best": 93.0
+      },
+      "stencil": {
+        "within_5pct": 0.833,
+        "pct_of_best": 97.4
+      },
+      "spmv": {
+        "within_5pct": 1.0,
+        "pct_of_best": 98.7
+      },
+      "nbody": {
+        "within_5pct": 0.833,
+        "pct_of_best": 96.2
+      },
+      "montecarlo": {
+        "within_5pct": 0.833,
+        "pct_of_best": 98.3
+      },
+      "mltrain": {
+        "within_5pct": 0.667,
+        "pct_of_best": 94.0
+      },
+      "server": {
+        "within_5pct": 1.0,
+        "pct_of_best": 100.0
+      }
+    }
+  },
+  "dual_process_test_sizes": {
+    "summary": [
+      {
+        "policy": "System 1 alone",
+        "pct_of_best": 99.1,
+        "mean_runs": 1.0
+      },
+      {
+        "policy": "System 1 -> System 2",
+        "pct_of_best": 99.1,
+        "mean_runs": 1.0
+      },
+      {
+        "policy": "Dual process (System 2 only when unsure)",
+        "pct_of_best": 99.1,
+        "mean_runs": 1.0
+      },
+      {
+        "policy": "System 2 alone, from 1x1 CPU fp32",
+        "pct_of_best": 96.4,
+        "mean_runs": 4.12
+      },
+      {
+        "policy": "Rules of thumb, from 1x1 CPU fp32",
+        "pct_of_best": 88.1,
+        "mean_runs": 3.62
+      }
+    ],
+    "per_problem": [
+      {
+        "workload": "fft",
+        "size": 192,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 4,
+          "gpu": true,
+          "precision": "fp32"
+        },
+        "confidence": 0.826,
+        "system1_pct_of_best": 100.0,
+        "used_system2": true,
+        "dual_pct_of_best": 100.0,
+        "dual_runs": 1
+      },
+      {
+        "workload": "gemm",
+        "size": 2048,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 8,
+          "gpu": true,
+          "precision": "bf16"
+        },
+        "confidence": 0.824,
+        "system1_pct_of_best": 96.7,
+        "used_system2": true,
+        "dual_pct_of_best": 96.7,
+        "dual_runs": 1
+      },
+      {
+        "workload": "mltrain",
+        "size": 4096,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 16,
+          "gpu": true,
+          "precision": "bf16"
+        },
+        "confidence": 0.823,
+        "system1_pct_of_best": 98.1,
+        "used_system2": true,
+        "dual_pct_of_best": 98.1,
+        "dual_runs": 1
+      },
+      {
+        "workload": "montecarlo",
+        "size": 8000000,
+        "system1_config": {
+          "ranks": 8,
+          "threads": 2,
+          "gpu": false,
+          "precision": "fp32"
+        },
+        "confidence": 0.826,
+        "system1_pct_of_best": 100.0,
+        "used_system2": true,
+        "dual_pct_of_best": 100.0,
+        "dual_runs": 1
+      },
+      {
+        "workload": "nbody",
+        "size": 4096,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 16,
+          "gpu": true,
+          "precision": "bf16"
+        },
+        "confidence": 0.823,
+        "system1_pct_of_best": 100.0,
+        "used_system2": true,
+        "dual_pct_of_best": 100.0,
+        "dual_runs": 1
+      },
+      {
+        "workload": "server",
+        "size": 4000,
+        "system1_config": {
+          "ranks": 8,
+          "threads": 1,
+          "gpu": false,
+          "precision": "fp32"
+        },
+        "confidence": 0.83,
+        "system1_pct_of_best": 100.0,
+        "used_system2": true,
+        "dual_pct_of_best": 100.0,
+        "dual_runs": 1
+      },
+      {
+        "workload": "spmv",
+        "size": 800000,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 8,
+          "gpu": true,
+          "precision": "bf16"
+        },
+        "confidence": 0.824,
+        "system1_pct_of_best": 98.6,
+        "used_system2": true,
+        "dual_pct_of_best": 98.6,
+        "dual_runs": 1
+      },
+      {
+        "workload": "stencil",
+        "size": 160,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 8,
+          "gpu": true,
+          "precision": "bf16"
+        },
+        "confidence": 0.824,
+        "system1_pct_of_best": 99.7,
+        "used_system2": true,
+        "dual_pct_of_best": 99.7,
+        "dual_runs": 1
+      }
+    ],
+    "note": "8 problems, one session each: small sample"
+  },
+  "leave_one_workload_out": [
+    {
+      "held_out": "gemm",
+      "within_5pct": 0.833,
+      "pct_of_best": 98.1,
+      "failing_picks": 0
+    },
+    {
+      "held_out": "fft",
+      "within_5pct": 0.333,
+      "pct_of_best": 2.9,
+      "failing_picks": 3
+    },
+    {
+      "held_out": "stencil",
+      "within_5pct": 0.167,
+      "pct_of_best": 56.6,
+      "failing_picks": 0
+    },
+    {
+      "held_out": "spmv",
+      "within_5pct": 1.0,
+      "pct_of_best": 98.7,
+      "failing_picks": 0
+    },
+    {
+      "held_out": "nbody",
+      "within_5pct": 0.667,
+      "pct_of_best": 91.8,
+      "failing_picks": 0
+    },
+    {
+      "held_out": "montecarlo",
+      "within_5pct": 0.0,
+      "pct_of_best": 75.5,
+      "failing_picks": 0
+    },
+    {
+      "held_out": "mltrain",
+      "within_5pct": 0.667,
+      "pct_of_best": 94.2,
+      "failing_picks": 0
+    },
+    {
+      "held_out": "server",
+      "within_5pct": 0.0,
+      "pct_of_best": 0.1,
+      "failing_picks": 6
+    }
+  ],
+  "latency_ms": {
+    "median": 6.348,
+    "p99": 8.415
+  }
+}
