@@ -1,0 +1,111 @@
+[
+  {
+    "variant": "previous (5 seeds, no bagging, no ranking)",
+    "hp": {
+      "bag": false,
+      "rank_w": 0.0,
+      "members": 5
+    },
+    "problems": 40,
+    "within_5pct": 0.825,
+    "pct_of_best": 96.56,
+    "failing_picks": 0,
+    "confidence_auroc": 0.0,
+    "seconds": 123
+  },
+  {
+    "variant": "+ bagging",
+    "hp": {
+      "bag": true,
+      "rank_w": 0.0
+    },
+    "problems": 40,
+    "within_5pct": 0.775,
+    "pct_of_best": 96.21,
+    "failing_picks": 0,
+    "confidence_auroc": 0.599,
+    "seconds": 187
+  },
+  {
+    "variant": "+ ranking loss",
+    "hp": {
+      "bag": false,
+      "rank_w": 1.0
+    },
+    "problems": 40,
+    "within_5pct": 0.825,
+    "pct_of_best": 96.36,
+    "failing_picks": 0,
+    "confidence_auroc": 0.0,
+    "seconds": 216
+  },
+  {
+    "variant": "+ bagging + ranking",
+    "hp": {
+      "bag": true,
+      "rank_w": 1.0
+    },
+    "problems": 40,
+    "within_5pct": 0.775,
+    "pct_of_best": 96.26,
+    "failing_picks": 0,
+    "confidence_auroc": 0.595,
+    "seconds": 258
+  },
+  {
+    "variant": "+ both, small net (128x2)",
+    "hp": {
+      "bag": true,
+      "rank_w": 1.0,
+      "width": 128,
+      "depth": 2
+    },
+    "problems": 40,
+    "within_5pct": 0.8,
+    "pct_of_best": 96.22,
+    "failing_picks": 0,
+    "confidence_auroc": 0.535,
+    "seconds": 274
+  },
+  {
+    "variant": "+ both, wide net (512x3)",
+    "hp": {
+      "bag": true,
+      "rank_w": 1.0,
+      "width": 512
+    },
+    "problems": 40,
+    "within_5pct": 0.8,
+    "pct_of_best": 96.38,
+    "failing_picks": 0,
+    "confidence_auroc": 0.559,
+    "seconds": 303
+  },
+  {
+    "variant": "+ both, more weight decay",
+    "hp": {
+      "bag": true,
+      "rank_w": 1.0,
+      "wd": 0.01
+    },
+    "problems": 40,
+    "within_5pct": 0.775,
+    "pct_of_best": 96.26,
+    "failing_picks": 0,
+    "confidence_auroc": 0.595,
+    "seconds": 305
+  },
+  {
+    "variant": "+ both, strong ranking (x3)",
+    "hp": {
+      "bag": true,
+      "rank_w": 3.0
+    },
+    "problems": 40,
+    "within_5pct": 0.8,
+    "pct_of_best": 96.24,
+    "failing_picks": 0,
+    "confidence_auroc": 0.633,
+    "seconds": 285
+  }
+]

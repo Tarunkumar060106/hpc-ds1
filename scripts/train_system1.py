@@ -38,8 +38,9 @@ from hpc_ds1.dataset import build_tables, load_hardware, load_measurements  # no
 from hpc_ds1.features import _hw  # noqa: E402
 from hpc_ds1.kernels import KERNELS, WORKLOAD_NAMES  # noqa: E402
 from hpc_ds1.space import config_key, make_config  # noqa: E402
-from hpc_ds1.system1 import (GOOD_WITHIN, Calibrator, System1, confidence_features, pick,  # noqa: E402
-                             rows_from_measurements, score_configs, size_ranges, train_ensemble)
+from hpc_ds1.system1 import (DEFAULT_HP, GOOD_WITHIN, Calibrator, System1, confidence_features,  # noqa: E402
+                             extrapolation, pick, rows_from_measurements, score_configs, size_ranges,
+                             train_ensemble, train_sizes_of)
 from hpc_ds1.training import reliability  # noqa: E402
 from hpc_ds1.tuner import TableRunner, heuristic_policy, run_tuning  # noqa: E402
 
@@ -56,10 +57,11 @@ def geo(xs):
     return float(math.exp(np.mean(np.log(np.maximum(np.asarray(xs, float), 1e-12)))))
 
 
-def answer(members, hardware, w, size, table, device):
+def answer(members, hardware, w, size, table, device, train_sizes=None):
     """Out-of-fold System 1 answer for one measured problem, scored against the measurements."""
     configs, log_rt, p_fail = score_configs(members, hardware, w, size, WORKLOAD_NAMES, device)
     best_i, sig = pick(configs, log_rt, p_fail)
+    sig["extrapolation"] = extrapolation(train_sizes or {}, w, size)
     cfg = configs[best_i]
     best_rt = min(t["runtime_sec"] for t in table.values())
     got = table.get(config_key(cfg))
@@ -70,28 +72,47 @@ def answer(members, hardware, w, size, table, device):
             "pct_of_best": 0.0 if picked_rt is None else best_rt / picked_rt}
 
 
-def main():
+def cross_validate(rows, hardware, tables, device, hp, quiet=False):
+    """6 folds by problem size: fold k holds out the k-th size of every workload."""
+    sizes = {w: sorted(KERNELS[w].sizes) for w in WORKLOAD_NAMES}
+    oof = []
+    for k in range(6):
+        held = {(w, sizes[w][k]) for w in WORKLOAD_NAMES}
+        kept = [r for r in rows if (r["workload"], r["size"]) not in held]
+        x, y, f, g = rows_from_measurements(kept, hardware)
+        members = train_ensemble(x, y, f, g, device, hp)
+        ts = train_sizes_of(kept)
+        for w, s in sorted(held):
+            if (w, s) in tables:
+                oof.append({**answer(members, hardware, w, s, tables[(w, s)], device, ts), "fold": k})
+        fk = [r for r in oof if r["fold"] == k]
+        if not quiet:
+            log(f"  fold {k}: {sum(r['good'] for r in fk)}/{len(fk)} picks within 5% of best, "
+                f"{100 * geo([r['pct_of_best'] or 1e-3 for r in fk]):.1f}% of best speed")
+    return oof
+
+
+def auroc(scores, labels):
+    pos = [s for s, l in zip(scores, labels) if l]
+    neg = [s for s, l in zip(scores, labels) if not l]
+    if not pos or not neg:
+        return None
+    return round(sum((p > n) + 0.5 * (p == n) for p in pos for n in neg) / (len(pos) * len(neg)), 3)
+
+
+def main(hp=None):
+    hp = {**DEFAULT_HP, **(hp or {})}
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     hardware = load_hardware()
     rows = load_measurements()
     tables, _ = build_tables(rows)
     sizes = {w: sorted(KERNELS[w].sizes) for w in WORKLOAD_NAMES}
-    results = {"good_within": GOOD_WITHIN, "threshold": THRESHOLD}
+    results = {"good_within": GOOD_WITHIN, "threshold": THRESHOLD, "hp": hp}
     t_all = time.time()
 
     # ---------------- 6-fold cross-validation by size
-    log("=== System 1 cross-validation (6 folds by problem size) ===")
-    oof = []
-    for k in range(6):
-        held = {(w, sizes[w][k]) for w in WORKLOAD_NAMES}
-        x, y, f = rows_from_measurements(rows, hardware, keep=lambda w, s: (w, s) not in held)
-        members = train_ensemble(x, y, f, device)
-        for w, s in sorted(held):
-            if (w, s) in tables:
-                oof.append({**answer(members, hardware, w, s, tables[(w, s)], device), "fold": k})
-        fk = [r for r in oof if r["fold"] == k]
-        log(f"  fold {k}: {sum(r['good'] for r in fk)}/{len(fk)} picks within 5% of best, "
-            f"{100 * geo([r['pct_of_best'] or 1e-3 for r in fk]):.1f}% of best speed")
+    log(f"=== System 1 cross-validation (6 folds by problem size) · recipe {hp} ===")
+    oof = cross_validate(rows, hardware, tables, device, hp)
 
     # ---------------- calibration (fit on all out-of-fold picks, checked leave-one-out)
     feats = [confidence_features(r["signals"]) for r in oof]
@@ -112,6 +133,7 @@ def main():
         "pct_of_best_speed": round(100 * geo([r["pct_of_best"] or 1e-3 for r in oof]), 1),
         "picked_failing_config": sum(r["failed"] for r in oof),
         "confidence_ece_leave_one_out": ece, "reliability": rel,
+        "confidence_auroc": auroc(loo, labels),
         "auto_share_at_085": round(len(auto) / len(oof), 4),
         "auto_within_5pct": round(float(np.mean([r["good"] for r in auto])), 4) if auto else None,
         "auto_pct_of_best": round(100 * geo([r["pct_of_best"] or 1e-3 for r in auto]), 1) if auto else None,
@@ -122,15 +144,17 @@ def main():
     results["system1_cv"] = s1
     log(f"System 1 alone, zero runs before deciding: {100 * s1['pick_within_5pct']:.1f}% of picks within 5% of best, "
         f"{s1['pct_of_best_speed']}% of best speed, {s1['picked_failing_config']} failing picks")
-    log(f"confidence (leave-one-out calibration): ECE {ece:.3f}; at {THRESHOLD}: auto {100 * s1['auto_share_at_085']:.0f}% "
+    log(f"confidence (leave-one-out calibration): ECE {ece:.3f}, AUROC {s1['confidence_auroc']}; at {THRESHOLD}: auto {100 * s1['auto_share_at_085']:.0f}% "
         f"of problems, {s1['auto_within_5pct']} within 5%, {s1['auto_pct_of_best']}% of best speed")
 
     # ---------------- dual process on the held-out test sizes
     log("\n=== dual process on held-out test sizes (unseen by System 1 and by the step model) ===")
     step = HPCDS1.load(device="cpu")
     test = {(w, KERNELS[w].test_size) for w in WORKLOAD_NAMES}
-    x, y, f = rows_from_measurements(rows, hardware, keep=lambda w, s: (w, s) not in test)
-    members = train_ensemble(x, y, f, device)
+    kept = [r for r in rows if (r["workload"], r["size"]) not in test]
+    x, y, f, g = rows_from_measurements(kept, hardware)
+    members = train_ensemble(x, y, f, g, device, hp)
+    ts_test = train_sizes_of(kept)
     cal_rows = [r for r in oof if (r["workload"], r["size"]) not in test]
     cal_t = Calibrator().fit([confidence_features(r["signals"]) for r in cal_rows], [float(r["good"]) for r in cal_rows])
     pol = defaultdict(lambda: {"pct": [], "runs": []})
@@ -139,7 +163,7 @@ def main():
         table = tables[(w, s)]
         runner = TableRunner(table, hardware)
         best = min(t["runtime_sec"] for t in table.values())
-        a = answer(members, hardware, w, s, table, device)
+        a = answer(members, hardware, w, s, table, device, ts_test)
         conf = cal_t(confidence_features(a["signals"]))
         start = a["config"] if not a["failed"] else DEFAULT_START
         s1_rt, s1_runs = (a["picked_runtime"], 1) if not a["failed"] else (table[config_key(DEFAULT_START)]["runtime_sec"], 2)
@@ -171,9 +195,11 @@ def main():
     log("\n=== leave one workload out ===")
     lowo = []
     for w in WORKLOAD_NAMES:
-        x, y, f = rows_from_measurements(rows, hardware, keep=lambda ww, s, w=w: ww != w)
-        members = train_ensemble(x, y, f, device)
-        ans = [answer(members, hardware, w, s, tables[(w, s)], device) for s in sizes[w] if (w, s) in tables]
+        kept = [r for r in rows if r["workload"] != w]
+        x, y, f, g = rows_from_measurements(kept, hardware)
+        members = train_ensemble(x, y, f, g, device, hp)
+        ans = [answer(members, hardware, w, s, tables[(w, s)], device, train_sizes_of(kept))
+               for s in sizes[w] if (w, s) in tables]
         r = {"held_out": w, "within_5pct": round(float(np.mean([a["good"] for a in ans])), 3),
              "pct_of_best": round(100 * geo([a["pct_of_best"] or 1e-3 for a in ans]), 1),
              "failing_picks": sum(a["failed"] for a in ans)}
@@ -183,10 +209,10 @@ def main():
     results["leave_one_workload_out"] = lowo
 
     # ---------------- final model on everything measured
-    x, y, f = rows_from_measurements(rows, hardware)
-    members = train_ensemble(x, y, f, device)
+    x, y, f, g = rows_from_measurements(rows, hardware)
+    members = train_ensemble(x, y, f, g, device, hp)
     s1m = System1([m.cpu() for m in members], WORKLOAD_NAMES, cal, size_ranges(rows), _hw(hardware),
-                  hardware.get("name"))
+                  hardware.get("name"), train_sizes=train_sizes_of(rows), hp=hp)
     torch.save(s1m.to_checkpoint(), PROJECT_ROOT / "model" / "system1.pt")
     lat = []
     for w in WORKLOAD_NAMES:

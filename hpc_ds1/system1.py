@@ -35,6 +35,9 @@ from .space import all_configs, config_key
 GOOD_WITHIN = 1.05  # a pick is "right" if its measured runtime is within 5% of the best
 GATE_SLACK = 1.5   # a confident pick is kept only if its first real run is at most 1.5x the predicted runtime
 SEEDS = (0, 1, 2, 3, 4)
+# Training recipe, chosen by cross-validation in scripts/tune_system1.py
+DEFAULT_HP = {"width": 256, "depth": 3, "epochs": 600, "lr": 2e-3, "wd": 1e-3, "bag": True, "rank_w": 3.0,
+              "members": 8}
 
 
 def _largest_prime_factor(n):
@@ -81,9 +84,10 @@ class PerfNet(nn.Module):
 # ---------------------------------------------------------------------------
 
 def rows_from_measurements(rows, hardware, workloads=None, keep=None):
-    """X, log10 runtime (nan for failures), failed flag. keep(workload, size) filters problems."""
+    """X, log10 runtime (nan for failures), failed flag, problem id per row.
+    keep(workload, size) filters problems."""
     workloads = list(workloads or WORKLOAD_NAMES)
-    xs, ys, fs = [], [], []
+    xs, ys, fs, gs, ids = [], [], [], [], {}
     for r in rows:
         if r["workload"] not in workloads or (keep and not keep(r["workload"], r["size"])):
             continue
@@ -91,21 +95,60 @@ def rows_from_measurements(rows, hardware, workloads=None, keep=None):
         xs.append(_job_vec(hardware, r["workload"], r["size"], workloads) + _cfg_vec(r["config"], hardware))
         ys.append(math.log10(max(r["telemetry"]["runtime_sec"], 1e-6)) if ok else float("nan"))
         fs.append(0.0 if ok else 1.0)
+        gs.append(ids.setdefault((r["workload"], r["size"]), len(ids)))
     return (torch.tensor(xs, dtype=torch.float32), torch.tensor(ys, dtype=torch.float32),
-            torch.tensor(fs, dtype=torch.float32))
+            torch.tensor(fs, dtype=torch.float32), torch.tensor(gs, dtype=torch.long))
 
 
-def train_member(x, y, failed, seed, device, epochs=600, lr=2e-3, wd=1e-3):
+def _rank_pairs(y, groups, min_gap=math.log10(1.05)):
+    """Index pairs (faster, slower) of configs of the same problem that differ by more than 5%."""
+    a, b = [], []
+    yv, gv = y.tolist(), groups.tolist()
+    by = {}
+    for i, (yy, g) in enumerate(zip(yv, gv)):
+        if yy == yy:  # not nan
+            by.setdefault(g, []).append(i)
+    for idx in by.values():
+        for i in idx:
+            for j in idx:
+                if yv[i] + min_gap < yv[j]:
+                    a.append(i)
+                    b.append(j)
+    return torch.tensor(a, dtype=torch.long), torch.tensor(b, dtype=torch.long)
+
+
+def train_member(x, y, failed, groups, seed, device, hp=None):
+    """One ensemble member. With hp["bag"], it trains on a bootstrap resample of whole
+    problems, so members disagree where the data is thin; hp["rank_w"] adds a loss that
+    orders the configs of each problem correctly (what picking actually needs)."""
+    hp = {**DEFAULT_HP, **(hp or {})}
     torch.manual_seed(seed)
-    net = PerfNet(x.shape[1]).to(device)
-    x, y, failed = x.to(device), y.to(device), failed.to(device)
+    gen = torch.Generator().manual_seed(1000 + seed)
+    n_groups = int(groups.max()) + 1
+    if hp["bag"]:
+        draw = torch.randint(0, n_groups, (n_groups,), generator=gen)
+        gw = torch.bincount(draw, minlength=n_groups).float()
+    else:
+        gw = torch.ones(n_groups)
+    w = gw[groups]
+    net = PerfNet(x.shape[1], hp["width"], hp["depth"]).to(device)
+    x, y, failed, w = x.to(device), y.to(device), failed.to(device), w.to(device)
     ok = ~torch.isnan(y)
-    opt = torch.optim.AdamW(net.parameters(), lr=lr, weight_decay=wd)
-    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs, eta_min=lr * 0.05)
+    pa, pb = _rank_pairs(y.cpu(), groups)
+    pa, pb = pa.to(device), pb.to(device)
+    pw = w[pa]
+    opt = torch.optim.AdamW(net.parameters(), lr=hp["lr"], weight_decay=hp["wd"])
+    epochs = hp["epochs"]
+    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, epochs, eta_min=hp["lr"] * 0.05)
     for _ in range(epochs):
         net.train()
         pred, fail_logit = net(x)
-        loss = F.smooth_l1_loss(pred[ok], y[ok], beta=0.05) + 0.5 * F.binary_cross_entropy_with_logits(fail_logit, failed)
+        reg = (F.smooth_l1_loss(pred[ok], y[ok], beta=0.05, reduction="none") * w[ok]).sum() / w[ok].sum()
+        fail = (F.binary_cross_entropy_with_logits(fail_logit, failed, reduction="none") * w).sum() / w.sum()
+        loss = reg + 0.5 * fail
+        if hp["rank_w"] and len(pa):
+            rank = (F.softplus(-(pred[pb] - pred[pa]) / 0.02) * pw).sum() / pw.sum().clamp(min=1)
+            loss = loss + hp["rank_w"] * 0.02 * rank
         opt.zero_grad(set_to_none=True)
         loss.backward()
         opt.step()
@@ -113,8 +156,9 @@ def train_member(x, y, failed, seed, device, epochs=600, lr=2e-3, wd=1e-3):
     return net.eval()
 
 
-def train_ensemble(x, y, failed, device, seeds=SEEDS):
-    return [train_member(x, y, failed, s, device) for s in seeds]
+def train_ensemble(x, y, failed, groups, device, hp=None):
+    hp = {**DEFAULT_HP, **(hp or {})}
+    return [train_member(x, y, failed, groups, s, device, hp) for s in range(hp["members"])]
 
 
 # ---------------------------------------------------------------------------
@@ -151,15 +195,22 @@ def pick(configs, log_rt, p_fail):
                   "fail_prob": float(mean_fail[best]), "pred_log_runtime": float(mean_rt[best])}
 
 
+def extrapolation(train_sizes, workload, size):
+    """How far (in log10) the size is from the nearest size measured for that workload."""
+    sizes = train_sizes.get(workload) or []
+    return min((abs(math.log10(size) - math.log10(s)) for s in sizes), default=1.0)
+
+
 def confidence_features(sig):
-    return [sig["agreement"], min(sig["margin"], 0.5) * 4, min(sig["spread"], 0.5) * 4, sig["fail_prob"]]
+    return [sig["agreement"], min(sig["margin"], 0.5) * 4, min(sig["spread"], 0.5) * 4, sig["fail_prob"],
+            min(sig.get("extrapolation", 0.0), 0.5) * 4]
 
 
 class Calibrator:
     """Logistic map from ensemble signals to P(pick within 5% of best), fitted on out-of-fold picks."""
 
     def __init__(self, w=None, b=0.0):
-        self.w = list(w) if w is not None else [3.0, 1.0, -1.0, -2.0]
+        self.w = list(w) if w is not None else [3.0, 1.0, -1.0, -2.0, -1.0]
         self.b = b
 
     def fit(self, feats, labels, l2=0.3, steps=2000):
@@ -203,8 +254,11 @@ class Prediction:
 
 
 class System1:
-    def __init__(self, members, workloads, calibrator, size_range, hardware_ref, hardware_name, device="cpu"):
+    def __init__(self, members, workloads, calibrator, size_range, hardware_ref, hardware_name, device="cpu",
+                 train_sizes=None, hp=None):
         self.members = [m.to(device).eval() for m in members]
+        self.train_sizes = {w: sorted(v) for w, v in (train_sizes or {}).items()}
+        self.hp = hp or {}
         self.workloads = list(workloads)
         self.calibrator = calibrator
         self.size_range = {w: list(r) for w, r in size_range.items()}
@@ -231,6 +285,7 @@ class System1:
         t0 = time.perf_counter()
         configs, log_rt, p_fail = score_configs(self.members, hardware, workload, size, self.workloads, self.device)
         best, sig = pick(configs, log_rt, p_fail)
+        sig["extrapolation"] = extrapolation(self.train_sizes, workload, size)
         conf = self.calibrator(confidence_features(sig))
         reasons = self.familiarity(hardware, workload, size)
         mode = "escalate" if reasons or conf < escalate_below else ("auto" if conf >= threshold else "confirm")
@@ -249,21 +304,31 @@ class System1:
     def to_checkpoint(self):
         return {"kind": "system1", "version": 1, "workloads": self.workloads, "in_dim": self.members[0].body[0].in_features,
                 "members": [m.state_dict() for m in self.members], "calibrator": self.calibrator.to_dict(),
-                "size_range": self.size_range, "hardware_ref": self.hardware_ref, "hardware_name": self.hardware_name}
+                "size_range": self.size_range, "hardware_ref": self.hardware_ref, "hardware_name": self.hardware_name,
+                "train_sizes": self.train_sizes, "hp": self.hp,
+                "widths": [(m.body[0].out_features, sum(isinstance(x, nn.Linear) for x in m.body)) for m in self.members]}
 
     @classmethod
     def from_checkpoint(cls, ck, device="cpu"):
         members = []
-        for sd in ck["members"]:
-            m = PerfNet(ck["in_dim"])
+        shapes = ck.get("widths") or [(256, 3)] * len(ck["members"])
+        for sd, (width, depth) in zip(ck["members"], shapes):
+            m = PerfNet(ck["in_dim"], width, depth)
             m.load_state_dict(sd)
             members.append(m)
         return cls(members, ck["workloads"], Calibrator(**ck["calibrator"]), ck["size_range"],
-                   ck["hardware_ref"], ck["hardware_name"], device)
+                   ck["hardware_ref"], ck["hardware_name"], device, ck.get("train_sizes"), ck.get("hp"))
 
     @classmethod
     def load(cls, path, device="cpu"):
         return cls.from_checkpoint(torch.load(path, map_location=device, weights_only=False), device)
+
+
+def train_sizes_of(rows):
+    out = {}
+    for r in rows:
+        out.setdefault(r["workload"], set()).add(r["size"])
+    return {w: sorted(v) for w, v in out.items()}
 
 
 def size_ranges(rows):
