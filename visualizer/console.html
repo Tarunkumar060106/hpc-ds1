@@ -290,6 +290,9 @@ hpc-ds1 serve                 # this console</pre>
     <div class="grid g4" id="evKpi"></div>
     <h2>Tuning sessions on held-out sizes</h2>
     <div class="box"><table><thead><tr><th>Policy</th><th>% of best config reached</th><th></th><th>Real runs per session</th></tr></thead><tbody id="evReplay"></tbody></table></div>
+    <h2>System 1: the whole configuration before anything runs</h2>
+    <div class="grid g4" id="evS1"></div>
+    <div class="box" style="margin-top:14px"><table><thead><tr><th>Approach (held-out test sizes)</th><th>% of best config reached</th><th></th><th>Real runs</th></tr></thead><tbody id="evDual"></tbody></table></div>
     <h2>Familiarity guard on never-seen kernels</h2>
     <div class="box"><table><thead><tr><th>Kernel held out of training</th><th>Flagged by guard</th><th>By distance alone</th><th>Confidently wrong auto-runs: before → after</th></tr></thead><tbody id="evGuard"></tbody></table></div>
   </div>
@@ -388,6 +391,7 @@ function jobForm(el, submitLabel, onSubmit) {
     '<label class="chk"><input type="checkbox" data-f="gpu">GPU</label>' +
     '<label class="chk"><input type="checkbox" data-f="bf16">bf16</label>' +
     '<label>Auto-run at<input type="number" data-f="threshold" value="0.85" min="0" max="1" step="0.05"></label>' +
+    '<label class="chk" title="System 1 picks the starting configuration instantly; System 2 tunes only if it is unsure"><input type="checkbox" data-f="s1" checked>Start from System 1</label>' +
     '<button class="btn dark">' + submitLabel + "</button>";
   var f = function (n) { return el.querySelector('[data-f="' + n + '"]'); };
   function sizes() {
@@ -397,7 +401,7 @@ function jobForm(el, submitLabel, onSubmit) {
   f("workload").addEventListener("change", sizes); sizes();
   el.querySelector("button").addEventListener("click", function () {
     var gpu = f("gpu").checked;
-    onSubmit({ workload: f("workload").value, size: +f("size").value, threshold: +f("threshold").value,
+    onSubmit({ workload: f("workload").value, size: +f("size").value, threshold: +f("threshold").value, start: f("s1").checked ? "system1" : "given",
       config: { ranks: gpu ? 1 : +f("ranks").value, threads: +f("threads").value, gpu: gpu, precision: f("bf16").checked ? "bf16" : "fp32" } }, el.querySelector("button"));
   });
 }
@@ -467,7 +471,7 @@ function renderFleet() {
         return '<span class="' + (x.device === t.device ? "win" : "") + '">' + esc(x.name) + "</span><span>" + (x.finish_sec == null ? esc(x.note) : "finish " + ms(x.finish_sec) + " = queue " + ms(x.queue_sec) + " + run " + ms(x.expected_runtime_sec)) + "</span>";
       }).join("") + "</div>";
       var res = t.result ? "×" + t.result.speedup.toFixed(2) + " in " + t.result.experiments + ' runs<div class="soft">' + cfg(t.result.final_config) + " · " + esc(t.result.stopped_reason.replace("_", " ")) + "</div>" : t.error ? '<span class="reasons">' + esc(t.error) + "</span>" : "";
-      return '<tr><td class="mono">' + esc(t.id) + '<div class="soft">' + when(t.submitted_at) + "</div></td><td>" + job(t.workload, t.size) + '<div class="soft">from ' + cfg(t.config) + "</div></td><td><b>" + esc(names[t.device] || t.device) +
+      return '<tr><td class="mono">' + esc(t.id) + '<div class="soft">' + when(t.submitted_at) + "</div></td><td>" + job(t.workload, t.size) + '<div class="soft">' + (t.system1 ? "System 1: " + cfg(t.system1.config) + " (" + pct(t.system1.confidence) + ")" : t.start === "system1" ? "System 1 on the device" : "from " + cfg(t.config)) + "</div></td><td><b>" + esc(names[t.device] || t.device) +
         '</b><div class="muted" style="font-size:12.5px">' + esc(t.placement.reason) + "</div>" + cands + "</td><td>" + pill(t.status) + "</td><td>" + res + "</td></tr>";
     }).join("") : '<tr><td colspan="5"><div class="empty">No tasks yet.</div></td></tr>';
     $("flUpd").textContent = "updated " + new Date().toLocaleTimeString();
@@ -486,7 +490,7 @@ function renderTuning() {
     $("tuRows").innerHTML = ss.length ? ss.map(function (s) {
       var r = s.result;
       return '<tr><td><a href="javascript:void 0" data-session="' + s.id + '" class="mono">' + esc(s.id) + "</a></td><td>" + job(s.workload, s.size) + '<div class="soft">from ' + cfg(s.initial_config) + "</div></td><td>" + pill(s.status) +
-        "</td><td>" + (r ? "×" + r.speedup.toFixed(2) + " in " + r.experiments + ' runs<div class="soft">' + cfg(r.final_config) + "</div>" : s.error ? '<span class="reasons">' + esc(s.error) + "</span>" : "") + "</td><td class=\"soft\">" + when(s.started_at) + "</td></tr>";
+        "</td><td>" + (r ? "×" + r.speedup.toFixed(2) + " in " + r.experiments + ' runs<div class="soft">' + cfg(r.final_config) + (s.start === "system1" ? (r.used_system2 ? " · S1→S2" : " · System 1 only") : "") + "</div>" : s.error ? '<span class="reasons">' + esc(s.error) + "</span>" : "") + "</td><td class=\"soft\">" + when(s.started_at) + "</td></tr>";
     }).join("") : '<tr><td colspan="5"><div class="empty">No sessions yet.</div></td></tr>';
     if (OPEN_SESSION) showSession(OPEN_SESSION);
   });
@@ -501,7 +505,10 @@ function showSession(id) {
         (d.approved === undefined ? (d.mode === "auto" ? '<span class="soft">automatic</span>' : '<span class="soft">pending</span>') : pill(d.approved ? "yes" : "no", d.approved ? "approved by " + d.approved_by : "rejected by " + d.approved_by)) +
         "</td><td>" + (run ? (run.ok ? ms(run.runtime_sec) : '<span class="reasons">failed or wrong</span>') : "") + "</td></tr>";
     }).join("");
-    $("tuDetail").innerHTML = "<h2>Session " + esc(s.id) + " · " + job(s.workload, s.size) + "</h2>" +
+    var s1 = s.system1 ? '<div class="box" style="margin-bottom:10px"><div class="boxbody">System 1 picked <b>' + esc(cfgName(s.system1.config)) + "</b> instantly (" + pct(s.system1.confidence) + " sure, " + pill(s.system1.mode) + ")" +
+      (s.result ? (s.result.used_system2 ? " · System 2 tuned from there" : " · kept: the first run confirmed it, no System 2 needed") : "") +
+      (s.system1.reasons && s.system1.reasons.length ? '<div class="reasons">' + s.system1.reasons.map(esc).join("<br>") + " (started from your config instead)</div>" : "") + "</div></div>" : "";
+    $("tuDetail").innerHTML = "<h2>Session " + esc(s.id) + " · " + job(s.workload, s.size) + "</h2>" + s1 +
       '<div class="box"><table><thead><tr><th>Step</th><th>Config</th><th>Model chose</th><th>Confidence · mode</th><th>Approval</th><th>Next run</th></tr></thead><tbody>' +
       (rows || '<tr><td colspan="6"><div class="empty">Measuring the starting config…</div></td></tr>') + "</tbody></table></div>" +
       '<div class="note">Start: ' + cfg(s.initial_config) + " · " + (s.runs[0] ? ms(s.runs[0].runtime_sec) : "…") + "</div>";
@@ -558,6 +565,19 @@ function renderEvaluation() {
       var me = s.policy.indexOf("HPC-DS1") === 0;
       return "<tr><td>" + (me ? "<b>" + esc(s.policy) + "</b>" : esc(s.policy)) + "</td><td>" + s.pct_of_best_config + '%</td><td style="width:40%"><div class="hbar"><i style="width:' + s.pct_of_best_config + "%;" + (me ? "" : "background:#b7b7bf") + '"></i></div></td><td>' + s.mean_experiments + "</td></tr>";
     }).join("") || '<tr><td colspan="4"><div class="empty">results/metrics.json not found next to this install.</div></td></tr>';
+    var s1 = m.system1;
+    if (s1) {
+      var cv = s1.system1_cv;
+      $("evS1").innerHTML = [[pct(cv.pick_within_5pct), "of instant picks within 5% of the best config (" + cv.problems + " problems, cross-validated)"],
+        [cv.pct_of_best_speed + "%", "of best speed with zero search runs"],
+        [cv.auto_share_at_085 != null ? pct(cv.auto_share_at_085) : "-", "confident enough to skip System 2" + (cv.auto_within_5pct != null ? ", " + pct(cv.auto_within_5pct) + " of those within 5%" : "")],
+        [s1.latency_ms.median + " ms", "to score all 44 configs (p99 " + s1.latency_ms.p99 + " ms)"]]
+        .map(function (k) { return '<div class="kpi"><div class="v">' + esc(k[0]) + '</div><div class="k">' + esc(k[1]) + "</div></div>"; }).join("");
+      $("evDual").innerHTML = s1.dual_process_test_sizes.summary.map(function (p) {
+        var me = p.policy.indexOf("Dual") === 0;
+        return "<tr><td>" + (me ? "<b>" + esc(p.policy) + "</b>" : esc(p.policy)) + "</td><td>" + p.pct_of_best + '%</td><td style="width:35%"><div class="hbar"><i style="width:' + p.pct_of_best + "%;" + (me ? "" : "background:#b7b7bf") + '"></i></div></td><td>' + p.mean_runs + "</td></tr>";
+      }).join("");
+    }
     $("evGuard").innerHTML = (g.unseen_kernels || []).map(function (u) {
       return '<tr><td class="mono">' + esc(u.held_out) + "</td><td>" + u.flagged_pct + "%</td><td>" + u.flagged_by_distance_only_pct + "%</td><td>" + (u.confident_wrong_before != null ? u.confident_wrong_before + " → <b>" + u.confident_wrong_after + "</b>" : "-") + "</td></tr>";
     }).join("") || '<tr><td colspan="4"><div class="empty">Run scripts/fit_guard.py to produce results/guard.json.</div></td></tr>';
@@ -567,8 +587,9 @@ function renderEvaluation() {
 /* =====================================================================
    playground (Jev-style typed questions over the model's heads)
    ===================================================================== */
-var KNOWN = { next_move: "choice", route: "route", familiar: "noul", should_stop: "noul", expected_gain: "score" };
+var KNOWN = { instant_config: "system1", next_move: "choice", route: "route", familiar: "noul", should_stop: "noul", expected_gain: "score" };
 var DEFAULT_QS = {
+  instant_config: { type: "system1", question: "System 1: what is the best configuration for this job, before running anything?" },
   next_move: { type: "choice", question: "Which single change should I make next?",
     options: ["ADD_RANKS", "REMOVE_RANKS", "ADD_THREADS", "REMOVE_THREADS", "USE_GPU", "USE_CPU", "USE_BF16", "USE_FP32", "STOP_TUNING"] },
   route: { type: "route", question: "Run it automatically, ask to confirm, or escalate to an engineer?", auto_at: 0.85, escalate_below: 0.5 },
@@ -614,7 +635,8 @@ function pgRun() {
   if (qs.route) { if (qs.route.auto_at != null) body.threshold = qs.route.auto_at; if (qs.route.escalate_below != null) body.escalate_below = qs.route.escalate_below; }
   $("pgThr").textContent = "auto ≥ " + (body.threshold != null ? body.threshold : 0.85) + " · escalate < " + (body.escalate_below != null ? body.escalate_below : 0.5);
   $("pgRun").disabled = true; $("pgRun").textContent = state.telemetry ? "Deciding…" : "Running job…";
-  api("/v1/decide", body).then(function (d) { pgRender(d, qs); })
+  var s1 = qs.instant_config ? api("/v1/predict", { workload: state.workload, size: state.size }).catch(function (e) { return { error: e.message }; }) : Promise.resolve(null);
+  Promise.all([api("/v1/decide", body), s1]).then(function (r) { pgRender(r[0], qs, r[1]); })
     .catch(function (e) { $("pgErr").textContent = e.message; })
     .then(function () { $("pgRun").disabled = false; $("pgRun").textContent = "Run"; refreshBadge(); });
 }
@@ -628,12 +650,21 @@ function qrow(key, spec, ans, badge, sub, extra) {
     (spec.question ? '<div class="q">' + esc(spec.question) + "</div>" : "") + (extra ? '<div class="extra">' + extra + "</div>" : "") + '</div><div class="ans">' + ans +
     '</div><div class="badge"><b>' + badge + "</b>" + (sub ? "<div>" + sub + "</div>" : "") + "</div></div>";
 }
-function pgRender(d, qs) {
+function cfgName(c) { return c.gpu ? "GPU · " + c.threads + " thr · " + c.precision : c.ranks + " rank × " + c.threads + " thr · CPU · " + c.precision; }
+function pgRender(d, qs, s1) {
   var t = d.state && d.state.telemetry, html = "";
   $("pgMeta").textContent = "hpc-ds1 · " + (d.telemetry_source === "measured now" ? "measured live" : "telemetry given") + " · " + d.latency_ms.toFixed(1) + " ms";
   Object.keys(qs).forEach(function (key) {
     var spec = qs[key] || {};
     if (!KNOWN[key]) { html += qrow(key, spec, '<div class="reasons">HPC-DS1 doesn\'t answer this question.</div><div class="conf">It answers: ' + Object.keys(KNOWN).join(", ") + "</div>", "-", ""); return; }
+    if (key === "instant_config") {
+      if (!s1 || s1.error) { html += qrow(key, spec, '<div class="reasons">' + esc((s1 && s1.error) || "System 1 not available") + "</div>", "System 1", ""); return; }
+      html += qrow(key, spec, '<div class="main">' + esc(cfgName(s1.config)) + '</div><div class="conf">Confidence: ' + pct(s1.confidence) + " · expected " + ms(s1.expected_runtime_sec) + " · " + pill(s1.mode) + "</div>" +
+        (s1.reasons.length ? '<div class="reasons">' + s1.reasons.map(esc).join("<br>") + "</div>" : ""),
+        "System 1", "0 runs · " + s1.latency_ms.toFixed(1) + " ms",
+        s1.alternatives.length ? "next best: " + s1.alternatives.map(function (a) { return esc(cfgName(a.config)) + " ~" + ms(a.expected_runtime_sec); }).join(" · ") : "");
+      return;
+    }
     if (key === "next_move") {
       var ps = Object.keys(d.probabilities).map(function (a) { return [a, d.probabilities[a]]; }).sort(function (a, b) { return b[1] - a[1]; });
       html += qrow(key, spec, '<div class="opts">' + ps.slice(0, 4).map(function (p, i) { return '<span class="o' + (i ? "" : " top") + '">' + esc(p[0].toLowerCase()) + "</span><span>" + pct(p[1]) + "</span>" + ring(p[1]); }).join("") +
