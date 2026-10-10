@@ -244,8 +244,8 @@ def test_system1_predicts_a_valid_config_without_running(tmp_path):
     from hpc_ds1.features import _hw
     rows = [r for r in load_measurements() if r["workload"] in ("stencil", "gemm")]
     hw = load_hardware()
-    x, y, f = rows_from_measurements(rows, hw)
-    members = [train_member(x, y, f, seed, "cpu", epochs=60) for seed in (0, 1)]
+    x, y, f, g = rows_from_measurements(rows, hw)
+    members = [train_member(x, y, f, g, seed, "cpu", {"epochs": 60}) for seed in (0, 1)]
     s1 = System1(members, __import__("hpc_ds1").WORKLOAD_NAMES, Calibrator(), size_ranges(rows), _hw(hw), hw["name"])
     torch.save(s1.to_checkpoint(), tmp_path / "s1.pt")
     s1 = System1.load(tmp_path / "s1.pt")
@@ -268,3 +268,24 @@ def test_dual_process_keeps_a_confirmed_system1_pick():
     assert gated(system2, lambda s: True)(as_predicted)[0] == "STOP_TUNING" and not calls
     assert gated(system2, lambda s: False)(as_predicted)[0] == "ADD_THREADS"  # pick didn't hold up: System 2
     assert gated(system2, None)(as_predicted)[0] == "ADD_THREADS"              # System 1 unsure: System 2
+
+
+def test_live_runs_are_logged_and_learned(tmp_path, monkeypatch):
+    """Level 5: a real run made through the tuner becomes training data for System 1."""
+    from hpc_ds1.learn import learn, load_live_runs
+    from hpc_ds1.tuner import LiveRunner
+    monkeypatch.setenv("HPC_DS1_HOME", str(tmp_path))
+    eng = Engine()
+    try:
+        LiveRunner("stencil", 96, eng)({"ranks": 1, "threads": 2, "gpu": False, "precision": "fp32"})
+    finally:
+        eng.close()
+    live = load_live_runs(eng.hardware["name"])
+    assert len(live) == 1 and live[0]["source"] == "live" and live[0]["correct"]
+
+    class Prev:
+        hp = {"members": 2, "epochs": 30}
+        from hpc_ds1.system1 import Calibrator
+        calibrator = Calibrator()
+    report = learn(Prev(), device="cpu", log=lambda m: None)
+    assert report["live_runs"] == 1 and (tmp_path / "model" / "system1.pt").exists()
