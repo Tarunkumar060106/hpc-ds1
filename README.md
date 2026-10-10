@@ -32,6 +32,29 @@ result = model.tune("stencil", 160, {"ranks": 1, "threads": 1})   # closed loop,
 
 Full numbers: `results/metrics.json` and `results/generalization.json`; interactive: the layer explorer (below).
 
+## System 1: the whole configuration before anything runs
+
+`hpc_ds1/system1.py` answers from the job description alone: workload, size and the machine. A performance model learned from every real measured run predicts each configuration's runtime and failure risk. An ensemble of five scores all 44 configurations in one pass (about 6 ms on CPU), and its agreement becomes the confidence.
+
+```bash
+hpc-ds1 predict --workload mltrain --size 4096   # instant: GPU, bf16 — nothing is run
+hpc-ds1 plan    --workload stencil --size 160    # dual process: System 1 picks, System 2 only if needed
+```
+
+**Dual process.** If System 1 is confident, the job is familiar, and the first real run is no slower than 1.5× the prediction, the configuration is kept. Otherwise System 2 (the step-by-step tuning loop) starts from System 1's pick, and unfamiliar jobs are escalated. Sessions (`"start": "system1"`) and fleet tasks use this by default.
+
+| Held-out problem sizes, from a slow 1×1 CPU start | % of best speed | Real runs |
+|---|---|---|
+| **Dual process (System 1 → System 2 when unsure)** | **99.1%** | **1.0** |
+| System 2 alone | 96.4% | 4.1 |
+| Rules of thumb | 88.1% | 3.6 |
+
+- Cross-validated over all 48 problems (6 folds by size): 85.4% of instant picks are within 5% of the best configuration, reaching 97.0% of best speed, with 0 crashing picks.
+- **Limitation: confidence is still flat** (about 0.82–0.86). It is calibrated on average but does not yet separate good picks from bad ones, which is why System 2 double-checks. Results on the 8 test sizes are a small sample.
+- On a workload System 1 never saw, picks can be badly wrong (the server workload, held out, picks the GPU, which has no server version). The size and workload checks escalate those.
+
+Reproduce: `python scripts/train_system1.py` → `model/system1.pt`, `results/system1.json`.
+
 ## Quick start
 
 ```bash

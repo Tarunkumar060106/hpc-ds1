@@ -371,9 +371,33 @@ GET  /v1/audit
     <p class="lead reveal d4" style="font-size:30px">Live, on all 8 workloads: every session ended within 0.5% of the best known setup or beat it, in 3 to 6 real runs.</p>
 </section>
 
+<!-- ========== SYSTEM 1 ========== -->
+<section class="slide">
+    <div class="tag reveal d1">A true System 1</div><div class="pg">13</div>
+    <h2 class="reveal d2">The whole setup <span class="hl">in one glance</span>, before the job ever runs.</h2>
+    <div class="grid g3">
+        <div class="card stat reveal d3"><div class="n ok">97%</div><div class="l">of best speed from the instant pick alone, zero search runs (48 problems, cross-validated)</div></div>
+        <div class="card stat reveal d4"><div class="n hl">85%</div><div class="l">of instant picks within 5% of the best setup, and 0 picks that would crash</div></div>
+        <div class="card stat reveal d5"><div class="n">6 ms</div><div class="l">to score all 44 setups for a job, from its name, size and the machine</div></div>
+    </div>
+    <p class="lead reveal d6" style="font-size:30px">A performance model learned from every real run predicts each setup's runtime and failure risk; five networks vote, and their agreement becomes the confidence.</p>
+</section>
+
+<!-- ========== DUAL PROCESS ========== -->
+<section class="slide">
+    <div class="tag reveal d1">System 1 + System 2</div><div class="pg">14</div>
+    <h2 class="reveal d2">System 1 answers. System 2 <span class="hl">only checks</span> when it has to.</h2>
+    <div class="bars">
+        <div class="bar me reveal d3"><span><b>Dual process</b></span><div class="track"><div class="fill" style="--w:99.1%"></div></div><span class="v hl">99.1%<small>1.0 run</small></span></div>
+        <div class="bar reveal d4"><span>System 2 alone</span><div class="track"><div class="fill" style="--w:96.4%"></div></div><span class="v">96.4%<small>4.1 runs</small></span></div>
+        <div class="bar reveal d5"><span>Rules of thumb</span><div class="track"><div class="fill" style="--w:88.1%"></div></div><span class="v">88.1%<small>3.6 runs</small></span></div>
+    </div>
+    <div class="note reveal d6">% of best speed on held-out sizes neither model saw, starting from a slow 1×1 CPU job · confidence is still flat (~0.82–0.86), so System 2 double-checks; it agreed after one run every time</div>
+</section>
+
 <!-- ========== DIFFERENTIATOR: MATRIX ========== -->
 <section class="slide">
-    <div class="tag reveal d1">How it stands apart</div><div class="pg">13</div>
+    <div class="tag reveal d1">How it stands apart</div><div class="pg">15</div>
     <h2 class="reveal d2" style="font-size:64px">Others <span class="muted" style="color:var(--muted)">measure</span>, <span style="color:var(--muted)">predict</span> or <span style="color:var(--muted)">speed up one app</span>. HPC-DS1 does the <span class="hl">whole job.</span></h2>
     <table class="matrix reveal d3">
         <tr><th></th><th class="me">HPC-DS1</th><th>Performance<br>analysis</th><th>Parallelism<br>predictors</th><th>Scheduling /<br>power tuning</th><th>Single-app<br>acceleration</th></tr>
@@ -384,7 +408,7 @@ GET  /v1/audit
 
 <!-- ========== DIFFERENTIATOR: ONLY HPC-DS1 ========== -->
 <section class="slide">
-    <div class="tag reveal d1">The complete package</div><div class="pg">14</div>
+    <div class="tag reveal d1">The complete package</div><div class="pg">16</div>
     <h2 class="reveal d2">Five things that, together, <span class="hl">only HPC-DS1</span> does.</h2>
     <div class="only">
         <div class="i reveal d2">01</div><div class="t reveal d2">Decides, acts, checks <span>· runs each change for real, undoes anything slower</span></div>
@@ -398,7 +422,7 @@ GET  /v1/audit
 
 <!-- ========== GUARD: KNOWS WHEN IT DOESN'T KNOW ========== -->
 <section class="slide">
-    <div class="tag reveal d1">Knows when it doesn't know</div><div class="pg">15</div>
+    <div class="tag reveal d1">Knows when it doesn't know</div><div class="pg">17</div>
     <h2 class="reveal d2">On a job it has never seen, it no longer <span class="bad">guesses</span>. It <span class="ok">asks.</span></h2>
     <div class="grid g3">
         <div class="card stat reveal d3"><div class="n" style="font-size:104px;white-space:nowrap"><span class="bad">240</span> → <span class="ok">0</span></div><div class="l">confidently wrong automatic moves on never-seen workloads</div></div>
@@ -410,7 +434,7 @@ GET  /v1/audit
 
 <!-- ========== FACILITY: FLEET ========== -->
 <section class="slide">
-    <div class="tag reveal d1">Built for a computing facility</div><div class="pg">16</div>
+    <div class="tag reveal d1">Built for a computing facility</div><div class="pg">18</div>
     <h2 class="reveal d2">Connect machines over the network. The model decides <span class="hl">where each task runs.</span></h2>
     <div class="flow">
         <div class="step reveal d3"><div class="num">01 · CONNECT</div><h3>One command</h3><p>hpc-ds1 agent --server … on any machine. No cables, shared disk or MPI.</p></div>
@@ -426,7 +450,7 @@ GET  /v1/audit
 
 <!-- ========== 11. LIVE DEMO ========== -->
 <section class="slide">
-    <div class="tag reveal d1">Live demo</div><div class="pg">17</div>
+    <div class="tag reveal d1">Live demo</div><div class="pg">19</div>
     <h1 class="reveal d2" style="font-size:130px">Let's run it<br><span class="hl">for real.</span></h1>
     <div class="chips reveal d3" style="margin-top:60px">
         <span class="chip">1 · playground: ask like Jev</span>
@@ -440,9 +464,9 @@ GET  /v1/audit
 
 <!-- ========== 12. CLOSE ========== -->
 <section class="slide">
-    <div class="tag reveal d1">In one line</div><div class="pg">18</div>
-    <h2 class="reveal d2" style="font-size:76px">From one laptop to a whole facility: tunes real jobs to <span class="hl">~94% of their best speed</span> in about 3 runs, never makes them slower, and <span class="ok">asks a human when it's unsure.</span></h2>
-    <p class="lead reveal d3" style="font-size:32px">Install · learn each machine · place every task · tune it · ask when unsure · log everything</p>
+    <div class="tag reveal d1">In one line</div><div class="pg">20</div>
+    <h2 class="reveal d2" style="font-size:76px">From one laptop to a whole facility: tunes real jobs to <span class="hl">~99% of their best speed</span> in about 1 run, never makes them slower, and <span class="ok">asks a human when it's unsure.</span></h2>
+    <p class="lead reveal d3" style="font-size:32px">Answer instantly (System 1) · check only when unsure (System 2) · learn each machine · run a whole facility</p>
     <div class="note reveal d4">Questions?</div>
 </section>
 
