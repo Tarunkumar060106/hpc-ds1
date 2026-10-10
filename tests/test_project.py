@@ -235,3 +235,36 @@ def test_plugin_task_is_discovered_from_home_folder(tmp_path):
     assert out.returncode == 0, out.stderr
     name, err = out.stdout.split()
     assert name == "etl" and float(err) < 1e-3
+
+
+def test_system1_predicts_a_valid_config_without_running(tmp_path):
+    from hpc_ds1.dataset import load_hardware, load_measurements
+    from hpc_ds1.space import in_space
+    from hpc_ds1.system1 import Calibrator, System1, rows_from_measurements, size_ranges, train_member
+    from hpc_ds1.features import _hw
+    rows = [r for r in load_measurements() if r["workload"] in ("stencil", "gemm")]
+    hw = load_hardware()
+    x, y, f = rows_from_measurements(rows, hw)
+    members = [train_member(x, y, f, seed, "cpu", epochs=60) for seed in (0, 1)]
+    s1 = System1(members, __import__("hpc_ds1").WORKLOAD_NAMES, Calibrator(), size_ranges(rows), _hw(hw), hw["name"])
+    torch.save(s1.to_checkpoint(), tmp_path / "s1.pt")
+    s1 = System1.load(tmp_path / "s1.pt")
+    p = s1.predict(hw, "stencil", 160)
+    assert in_space(p.config, True) and 0 <= p.confidence <= 1 and p.expected_runtime_sec > 0 and p.familiar
+    far = s1.predict(hw, "stencil", 10_000)
+    assert far.mode == "escalate" and any("outside the measured range" in r for r in far.reasons)
+    other = s1.predict({**hw, "cpu_threads": 128, "cpu_cores": 64}, "gemm", 2048)
+    assert any("different machine" in r for r in other.reasons)
+
+
+def test_dual_process_keeps_a_confirmed_system1_pick():
+    from hpc_ds1.system1 import gated
+    calls = []
+
+    def system2(state, exclude=()):
+        calls.append(state)
+        return "ADD_THREADS", 0.9, 0, False
+    as_predicted = {"telemetry": {"runtime_sec": 0.01}}
+    assert gated(system2, lambda s: True)(as_predicted)[0] == "STOP_TUNING" and not calls
+    assert gated(system2, lambda s: False)(as_predicted)[0] == "ADD_THREADS"  # pick didn't hold up: System 2
+    assert gated(system2, None)(as_predicted)[0] == "ADD_THREADS"              # System 1 unsure: System 2
