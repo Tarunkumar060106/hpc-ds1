@@ -75,8 +75,10 @@ class AuditLog:
 
 
 class Session:
-    def __init__(self, sid, workload, size, config, threshold, escalate_below, max_steps):
+    def __init__(self, sid, workload, size, config, threshold, escalate_below, max_steps, start="given"):
         self.id, self.workload, self.size, self.config = sid, workload, size, config
+        self.start = start               # "given" config, or "system1": start from System 1's pick
+        self.system1 = None              # System 1's prediction, when used
         self.threshold, self.escalate_below, self.max_steps = threshold, escalate_below, max_steps
         self.status = "running"          # running | awaiting_approval | done | failed
         self.started_at, self.finished_at = _now(), None
@@ -91,7 +93,8 @@ class Session:
         return {"id": self.id, "workload": self.workload, "size": self.size, "initial_config": self.config,
                 "threshold": self.threshold, "escalate_below": self.escalate_below, "status": self.status,
                 "started_at": self.started_at, "finished_at": self.finished_at, "runs": self.runs,
-                "decisions": self.decisions, "pending": self.pending, "result": self.result, "error": self.error}
+                "decisions": self.decisions, "pending": self.pending, "result": self.result, "error": self.error,
+                "start": self.start, "system1": self.system1}
 
 
 class Sessions:
@@ -101,8 +104,8 @@ class Sessions:
         self._ids = itertools.count(1)
 
     def start(self, workload, size, config, threshold=DEFAULT_THRESHOLD,
-              escalate_below=DEFAULT_ESCALATE_BELOW, max_steps=8):
-        s = Session(f"s{next(self._ids)}", workload, size, config, threshold, escalate_below, max_steps)
+              escalate_below=DEFAULT_ESCALATE_BELOW, max_steps=8, start="given"):
+        s = Session(f"s{next(self._ids)}", workload, size, config, threshold, escalate_below, max_steps, start)
         self.items[s.id] = s
         threading.Thread(target=self._run, args=(s,), daemon=True).start()
         return s
@@ -148,9 +151,17 @@ class Sessions:
             return ok
 
         try:
-            r = run_tuning(policy, s.workload, s.size, s.config, runner, max_steps=s.max_steps,
+            gate = None
+            if s.start == "system1":
+                from .system1 import dual_start
+                with lock:
+                    s.config, pred, gate = dual_start(model, s.workload, s.size, s.threshold, s.escalate_below, s.config)
+                s.system1 = pred.to_dict() if pred else None
+            from .system1 import gated
+            r = run_tuning(gated(policy, gate), s.workload, s.size, s.config, runner, max_steps=s.max_steps,
                            threshold=s.threshold, on_escalate=on_escalate)
-            s.result = r.to_dict()
+            s.used_system2 = bool(r.steps and r.steps[0].action != "STOP_TUNING") or gate is None
+            s.result = {**r.to_dict(), "used_system2": s.used_system2}
             s.status = "done"
         except Exception as e:  # a failing job must not take the server down
             s.error, s.status = str(e), "failed"

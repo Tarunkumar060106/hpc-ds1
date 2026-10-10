@@ -15,7 +15,9 @@ Endpoints
     POST /v1/trace            same body as /v1/decide -> decision + every layer's activations
     POST /v1/tune             {workload, size, config, threshold?, max_steps?}
                               closed-loop tuning in one call; every step runs on this machine
-    POST /v1/sessions         same body -> background tuning session that pauses for approval
+    POST /v1/predict          {workload, size} -> System 1: full config from the job description, nothing run
+    POST /v1/sessions         same body (+ start: "system1"|"given") -> background tuning session that
+                              pauses for approval; "system1" starts from System 1's pick (dual process)
     GET  /v1/sessions[/<id>]  session list / one session with every run and decision
     POST /v1/sessions/<id>/approve   {approve: true|false, by?}
     GET  /v1/queue            moves waiting for an engineer, across all sessions
@@ -147,8 +149,18 @@ class App:
         w, size, cfg = self._parse_job(body)
         s = self.sessions.start(w, size, cfg, float(body.get("threshold", DEFAULT_THRESHOLD)),
                                 float(body.get("escalate_below", DEFAULT_ESCALATE_BELOW)),
-                                min(int(body.get("max_steps", 8)), 12))
+                                min(int(body.get("max_steps", 8)), 12), str(body.get("start", "given")))
         return s.to_dict()
+
+    def predict(self, body):
+        w = body.get("workload")
+        if w not in KERNELS:
+            raise ValueError(f"unknown workload {w!r}; choose from {list(KERNELS)}")
+        size = int(body.get("size", 0))
+        with self.lock:
+            p = self.model.predict(w, size, threshold=float(body.get("threshold", DEFAULT_THRESHOLD)),
+                                   escalate_below=float(body.get("escalate_below", DEFAULT_ESCALATE_BELOW)))
+        return p.to_dict()
 
     def machine(self):
         from .dataset import data_dir
@@ -175,14 +187,14 @@ class App:
 
     def metrics(self):
         out = {}
-        for name in ("metrics", "guard", "generalization"):
+        for name in ("metrics", "guard", "generalization", "system1"):
             f = RESULTS_DIR / f"{name}.json"
             if f.exists():
                 out[name] = json.loads(f.read_text())
         m = out.get("metrics", {})
         return {"model": m.get("model"), "dataset": m.get("dataset"), "metrics": m.get("metrics"),
                 "replay": m.get("replay"), "live": m.get("live"), "guard": out.get("guard"),
-                "generalization": out.get("generalization")}
+                "generalization": out.get("generalization"), "system1": out.get("system1")}
 
 
 def make_handler(app: App):
@@ -281,7 +293,7 @@ def make_handler(app: App):
                             body.get("workload"), int(body.get("size", 0)), body.get("config"),
                             float(body.get("threshold", DEFAULT_THRESHOLD)),
                             float(body.get("escalate_below", DEFAULT_ESCALATE_BELOW)),
-                            min(int(body.get("max_steps", 8)), 12)))
+                            min(int(body.get("max_steps", 8)), 12), body.get("start")))
                     if len(parts) == 6 and parts[5] == "status":
                         return self._send(200, app.fleet.update(parts[4], body.get("device"), body))
                     if len(parts) == 6 and parts[5] == "approve":
@@ -289,11 +301,13 @@ def make_handler(app: App):
                     return self._send(404, {"error": "not found"})
                 if path == "/v1/sessions":
                     return self._send(200, app.start_session(body))
+                if path == "/v1/predict":
+                    return self._send(200, app.predict(body))
                 if path.startswith("/v1/sessions/") and path.endswith("/approve"):
                     s = app.sessions.answer(path.split("/")[3], body.get("approve", False), body.get("by"))
                     return self._send(200, s.to_dict())
                 return self._send(404, {"error": "not found"})
-            except (ValueError, KeyError, TypeError) as e:
+            except (ValueError, KeyError, TypeError, FileNotFoundError) as e:
                 return self._send(400, {"error": str(e)})
             except RuntimeError as e:
                 return self._send(500, {"error": f"run failed: {e}"})

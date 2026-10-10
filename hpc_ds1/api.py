@@ -97,6 +97,7 @@ class HPCDS1:
         self.guard = guard
         self._engine = None
         self.last_decision: Optional[Decision] = None
+        self.system1 = None  # System1, loaded from system1.pt next to the checkpoint if present
 
     @classmethod
     def load(cls, path=None, device=None):
@@ -112,6 +113,10 @@ class HPCDS1:
         guard = FamiliarityGuard.from_dict(ckpt["guard"]) if ckpt.get("guard") else None
         model = cls(net, device, ckpt.get("meta"), guard)
         model.path = path
+        s1 = path.parent / "system1.pt"
+        if s1.exists():
+            from .system1 import System1
+            model.system1 = System1.load(s1, device="cpu")
         return model
 
     # ------------------------------------------------------------------ engine
@@ -216,9 +221,40 @@ class HPCDS1:
         return run_tuning(self.policy(threshold, escalate_below), workload, size, initial_config, runner,
                           max_steps=max_steps, threshold=threshold, on_escalate=on_escalate)
 
+    # ------------------------------------------------------- System 1 / dual process
+
+    def predict(self, workload, size, hardware=None, threshold=DEFAULT_THRESHOLD,
+                escalate_below=DEFAULT_ESCALATE_BELOW):
+        """System 1: the full configuration from the job description alone. Nothing is run."""
+        if self.system1 is None:
+            raise FileNotFoundError("no System 1 model (model/system1.pt); train it with scripts/train_system1.py")
+        return self.system1.predict(hardware or self.engine.hardware, workload, int(size), threshold, escalate_below)
+
+    def plan(self, workload, size, threshold=DEFAULT_THRESHOLD, escalate_below=DEFAULT_ESCALATE_BELOW,
+             on_escalate=None, max_steps=8, runner=None):
+        """Dual process. System 1 picks a configuration instantly. If it is confident and
+        the job is familiar, that configuration is run once and kept. Otherwise System 2
+        (the measured tuning loop) starts from System 1's pick; unfamiliar jobs are escalated
+        through on_escalate before anything runs. Returns (prediction, TuneResult, used_system2)."""
+        from .system1 import GATE_SLACK
+        pred = self.predict(workload, size, threshold=threshold, escalate_below=escalate_below)
+        runner = runner or LiveRunner(workload, size, self.engine)
+        if not pred.familiar:
+            if on_escalate is None or not on_escalate("RUN_SYSTEM1_PICK", pred.confidence, {"prediction": pred.to_dict()}):
+                return pred, None, False
+        if pred.mode == "auto":
+            result = run_tuning(lambda state, exclude=(): ("STOP_TUNING", 1.0, 0), workload, size, pred.config, runner,
+                                max_steps=1)
+            if result.final_runtime <= pred.expected_runtime_sec * GATE_SLACK:  # ran as predicted
+                return pred, result, False
+        result = run_tuning(self.policy(threshold, escalate_below), workload, size, pred.config, runner,
+                            max_steps=max_steps, threshold=threshold, on_escalate=on_escalate)
+        return pred, result, True
+
     def info(self):
         return {"model": "HPC-DS1", "parameters": self.net.count_parameters(), "hparams": self.net.hparams,
                 "temperature": round(self.net.temperature.item(), 4), "actions": ACTIONS,
+                "system1": bool(self.system1),
                 "device": str(self.device), "checkpoint": str(getattr(self, "path", "")), "escalate_below": DEFAULT_ESCALATE_BELOW,
                 "familiarity_guard": ({"trained_workloads": self.guard.workloads, "trained_on": self.guard.hardware_name,
                                        "radius": round(self.guard.radius, 4)} if self.guard else None),

@@ -48,6 +48,18 @@ def main():
     m.add_argument("--server", required=True)
     m.add_argument("--token", required=True)
     _job_args(m)
+    m.add_argument("--start", choices=["system1", "given"], default="system1",
+                   help="start from System 1's instant pick on the chosen device (default) or from the given config")
+    p = sub.add_parser("predict", help="System 1: the full configuration for a job, instantly, without running it")
+    p.add_argument("--workload", required=True, choices=list(KERNELS))
+    p.add_argument("--size", type=int, required=True)
+    p.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
+    p.add_argument("--checkpoint")
+    n = sub.add_parser("plan", help="dual process: System 1 picks, System 2 tunes only if System 1 is unsure")
+    n.add_argument("--workload", required=True, choices=list(KERNELS))
+    n.add_argument("--size", type=int, required=True)
+    n.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
+    n.add_argument("--checkpoint")
     d = sub.add_parser("decide", help="run the job once for real, then ask the model what to change")
     _job_args(d)
     d.add_argument("--candidates", help="comma-separated subset of actions")
@@ -78,7 +90,7 @@ def main():
     if args.cmd == "submit":
         from .fleet import submit
         t = submit(args.server, args.token, args.workload, args.size, _config(args),
-                   threshold=args.threshold, escalate_below=args.escalate_below)
+                   threshold=args.threshold, escalate_below=args.escalate_below, start=args.start)
         print(f"task {t['id']} -> {next(c['name'] for c in t['placement']['candidates'] if c['device'] == t['device'])}: "
               f"{t['placement']['reason']}")
         for c in t["placement"]["candidates"]:
@@ -112,6 +124,28 @@ def main():
             print(json.dumps({**model.info(), "hardware": model.engine.hardware,
                               "kernels": {w: {"sizes": k.sizes, "unit": k.size_unit, "character": k.character}
                                           for w, k in KERNELS.items()}}, indent=2))
+        elif args.cmd == "predict":
+            p = model.predict(args.workload, args.size, threshold=args.threshold)
+            c = p.config
+            where = "GPU" if c["gpu"] else f"{c['ranks']} rank(s) x {c['threads']} thread(s) CPU"
+            print(f"System 1 ({p.latency_ms:.1f} ms, nothing run): {where}, {c['precision']}")
+            print(f"  expected runtime {p.expected_runtime_sec * 1000:.2f} ms, {p.confidence:.0%} sure it is within "
+                  f"5% of the best -> {p.mode.upper()}" + "".join(f"\n  - {r}" for r in p.reasons))
+            for a in p.alternatives:
+                print(f"  alternative: {a['config']}  ~{a['expected_runtime_sec'] * 1000:.2f} ms")
+        elif args.cmd == "plan":
+            def ask(action, confidence, state):
+                d = model.last_decision
+                why = "".join(f"\n    - {r}" for r in (d.reasons if d else state.get("prediction", {}).get("reasons", [])))
+                return input(f"  [needs approval] {action} ({confidence:.0%} sure){why}\n  run it? [y/N] ").strip().lower() == "y"
+
+            pred, r, used2 = model.plan(args.workload, args.size, threshold=args.threshold, on_escalate=ask)
+            print(f"System 1 picked {pred.config} ({pred.confidence:.0%} sure, {pred.mode}, {pred.latency_ms:.1f} ms)")
+            if r is None:
+                print("not run: unfamiliar job and no approval")
+            else:
+                how = "System 2 tuned from there" if used2 else "kept as is: System 1 was confident and the run confirmed it"
+                print(f"{how}: {r.final_runtime * 1000:.2f} ms in {r.experiments} real run(s); final config {r.final_config}")
         elif args.cmd == "decide":
             state = model.observe(args.workload, args.size, _config(args))
             t = state["telemetry"]

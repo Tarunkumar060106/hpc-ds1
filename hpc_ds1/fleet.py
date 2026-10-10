@@ -112,7 +112,7 @@ class Fleet:
                    if t["device"] == dev_id and t["status"] in ("queued", "running", "awaiting_approval"))
 
     # tasks
-    def submit(self, workload, size, config=None, threshold=0.85, escalate_below=0.5, max_steps=8):
+    def submit(self, workload, size, config=None, threshold=0.85, escalate_below=0.5, max_steps=8, start=None):
         if workload not in KERNELS:
             raise ValueError(f"unknown workload {workload!r}; choose from {list(KERNELS)}")
         with self.lock:
@@ -138,6 +138,7 @@ class Fleet:
                 why = "no device has measured this kernel; sent to the least busy one"
             t = {"id": f"t{next(self._task_ids)}", "workload": workload, "size": int(size),
                  "config": config or {"ranks": 1, "threads": 1, "gpu": False, "precision": "fp32"},
+                 "start": start or ("given" if config else "system1"),
                  "threshold": threshold, "escalate_below": escalate_below, "max_steps": max_steps,
                  "device": best["device"], "status": "queued", "submitted_at": _now(),
                  "placement": {"candidates": candidates, "reason": why,
@@ -169,6 +170,8 @@ class Fleet:
             self.devices[dev_id]["last_seen"] = time.time()
             if "event" in body:
                 ev = body["event"]
+                if "system1" in ev:
+                    t["system1"] = ev["system1"]
                 if "decision" in ev and self.audit is not None:
                     row = self.audit.add(f"fleet {task_id} @ {self.devices[dev_id]['name']}", ev["state"], ev["decision"])
                     t["last_audit"] = row["id"]
@@ -276,8 +279,16 @@ class Agent:
                     return bool(ans["approve"])
 
         try:
+            from .system1 import dual_start, gated
+            start, gate = t["config"], None
+            if t.get("start") == "system1":
+                start, pred, gate = dual_start(model, t["workload"], t["size"], t["threshold"], t["escalate_below"],
+                                               t["config"])
+                if pred is not None:
+                    report(event={"system1": pred.to_dict()})
+                    self.log(f"task {tid}: System 1 picks {pred.config} ({pred.confidence:.0%} sure, {pred.mode})")
             runner = LiveRunner(t["workload"], t["size"], model.engine)
-            r = run_tuning(policy, t["workload"], t["size"], t["config"], runner, max_steps=t["max_steps"],
+            r = run_tuning(gated(policy, gate), t["workload"], t["size"], start, runner, max_steps=t["max_steps"],
                            threshold=t["threshold"], on_escalate=on_escalate)
             report(status="done", result=r.to_dict())
             self.log(f"task {tid}: x{r.speedup:.2f} in {r.experiments} runs -> {r.final_config}")
