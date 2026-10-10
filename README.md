@@ -34,7 +34,7 @@ Full numbers: `results/metrics.json` and `results/generalization.json`; interact
 
 ## System 1: the whole configuration before anything runs
 
-`hpc_ds1/system1.py` answers from the job description alone: workload, size and the machine. A performance model learned from every real measured run predicts each configuration's runtime and failure risk. An ensemble of five scores all 44 configurations in one pass (about 6 ms on CPU), and its agreement becomes the confidence.
+`hpc_ds1/system1.py` answers from the job description alone: workload, size and the machine. A performance model learned from every real measured run predicts each configuration's runtime and failure risk. An ensemble of eight, each trained on a different bootstrap resample of problems and with a loss that ranks the configs of each problem, scores all 44 configurations in one pass (about 12 ms on CPU); its disagreement becomes the confidence.
 
 ```bash
 hpc-ds1 predict --workload mltrain --size 4096   # instant: GPU, bf16 — nothing is run
@@ -45,13 +45,18 @@ hpc-ds1 plan    --workload stencil --size 160    # dual process: System 1 picks,
 
 | Held-out problem sizes, from a slow 1×1 CPU start | % of best speed | Real runs |
 |---|---|---|
-| **Dual process (System 1 → System 2 when unsure)** | **99.1%** | **1.0** |
+| **Dual process (System 1 → System 2 when unsure)** | **99.2%** | **1.0** |
 | System 2 alone | 96.4% | 4.1 |
 | Rules of thumb | 88.1% | 3.6 |
 
-- Cross-validated over all 48 problems (6 folds by size): 85.4% of instant picks are within 5% of the best configuration, reaching 97.0% of best speed, with 0 crashing picks.
-- **Limitation: confidence is still flat** (about 0.82–0.86). It is calibrated on average but does not yet separate good picks from bad ones, which is why System 2 double-checks. Results on the 8 test sizes are a small sample.
+- Cross-validated over all 48 problems (6 folds by size): 83.3% of instant picks are within 5% of the best configuration, reaching 96.8% of best speed, with 0 crashing picks.
+- **Confidence now carries information:** it separates good picks from bad ones with AUROC 0.63 (calibration error 0.06). About half of jobs are confident enough to skip System 2, and those reach 97.1% of best speed. The recipe was chosen by cross-validation without touching the test sizes (`scripts/tune_system1.py`, `results/system1_tuning.json`); it traded about one problem's worth of accuracy for this.
+- **Limitations:** AUROC 0.63 is useful but modest, so System 2 still double-checks most unsure picks. Results on the 8 test sizes are a small sample, and accuracy is limited by having only 48 measured problems.
 - On a workload System 1 never saw, picks can be badly wrong (the server workload, held out, picks the GPU, which has no server version). The size and workload checks escalate those.
+
+### Level 5: System 2 teaches System 1
+
+Every real run made through HPC-DS1 on a machine (tuning sessions, `plan`, fleet tasks, the playground) is logged to `~/.hpc_ds1/data/live_runs.jsonl` in the same format as the collected measurements (turn off with `HPC_DS1_LOG_LIVE=0`). `hpc-ds1 learn` retrains System 1 on the collected measurements plus those live runs and saves `~/.hpc_ds1/model/system1.pt`, which `hpc_ds1.load()` then prefers. Problems the facility actually runs become familiar over time; rerun `scripts/train_system1.py` to re-measure accuracy.
 
 Reproduce: `python scripts/train_system1.py` → `model/system1.pt`, `results/system1.json`.
 

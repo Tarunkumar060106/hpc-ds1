@@ -377,10 +377,10 @@ GET  /v1/audit
     <h2 class="reveal d2">The whole setup <span class="hl">in one glance</span>, before the job ever runs.</h2>
     <div class="grid g3">
         <div class="card stat reveal d3"><div class="n ok">97%</div><div class="l">of best speed from the instant pick alone, zero search runs (48 problems, cross-validated)</div></div>
-        <div class="card stat reveal d4"><div class="n hl">85%</div><div class="l">of instant picks within 5% of the best setup, and 0 picks that would crash</div></div>
-        <div class="card stat reveal d5"><div class="n">6 ms</div><div class="l">to score all 44 setups for a job, from its name, size and the machine</div></div>
+        <div class="card stat reveal d4"><div class="n hl">83%</div><div class="l">of instant picks within 5% of the best setup, and 0 picks that would crash</div></div>
+        <div class="card stat reveal d5"><div class="n">12 ms</div><div class="l">to score all 44 setups for a job, from its name, size and the machine</div></div>
     </div>
-    <p class="lead reveal d6" style="font-size:30px">A performance model learned from every real run predicts each setup's runtime and failure risk; five networks vote, and their agreement becomes the confidence.</p>
+    <p class="lead reveal d6" style="font-size:30px">A performance model learned from every real run predicts each setup's runtime and failure risk; eight networks, each trained on different problems, vote, and their disagreement becomes the confidence.</p>
 </section>
 
 <!-- ========== DUAL PROCESS ========== -->
@@ -388,11 +388,11 @@ GET  /v1/audit
     <div class="tag reveal d1">System 1 + System 2</div><div class="pg">14</div>
     <h2 class="reveal d2">System 1 answers. System 2 <span class="hl">only checks</span> when it has to.</h2>
     <div class="bars">
-        <div class="bar me reveal d3"><span><b>Dual process</b></span><div class="track"><div class="fill" style="--w:99.1%"></div></div><span class="v hl">99.1%<small>1.0 run</small></span></div>
+        <div class="bar me reveal d3"><span><b>Dual process</b></span><div class="track"><div class="fill" style="--w:99.2%"></div></div><span class="v hl">99.2%<small>1.0 run</small></span></div>
         <div class="bar reveal d4"><span>System 2 alone</span><div class="track"><div class="fill" style="--w:96.4%"></div></div><span class="v">96.4%<small>4.1 runs</small></span></div>
         <div class="bar reveal d5"><span>Rules of thumb</span><div class="track"><div class="fill" style="--w:88.1%"></div></div><span class="v">88.1%<small>3.6 runs</small></span></div>
     </div>
-    <div class="note reveal d6">% of best speed on held-out sizes neither model saw, starting from a slow 1×1 CPU job · confidence is still flat (~0.82–0.86), so System 2 double-checks; it agreed after one run every time</div>
+    <div class="note reveal d6">% of best speed on held-out sizes neither model saw, starting from a slow 1×1 CPU job · confidence now separates good picks from bad (AUROC 0.63): about half the jobs skip System 2 entirely</div>
 </section>
 
 <!-- ========== DIFFERENTIATOR: MATRIX ========== -->
