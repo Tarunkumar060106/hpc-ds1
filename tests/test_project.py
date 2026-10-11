@@ -275,6 +275,7 @@ def test_live_runs_are_logged_and_learned(tmp_path, monkeypatch):
     from hpc_ds1.learn import learn, load_live_runs
     from hpc_ds1.tuner import LiveRunner
     monkeypatch.setenv("HPC_DS1_HOME", str(tmp_path))
+    monkeypatch.setenv("HPC_DS1_LOG_LIVE", "1")
     eng = Engine()
     try:
         LiveRunner("stencil", 96, eng)({"ranks": 1, "threads": 2, "gpu": False, "precision": "fp32"})
@@ -289,3 +290,23 @@ def test_live_runs_are_logged_and_learned(tmp_path, monkeypatch):
         calibrator = Calibrator()
     report = learn(Prev(), device="cpu", log=lambda m: None)
     assert report["live_runs"] == 1 and (tmp_path / "model" / "system1.pt").exists()
+
+
+def test_encoder_questions_are_answered_from_measurements():
+    """Every generated question's answer must agree with the measured runtimes."""
+    from hpc_ds1.dataset import build_tables, load_hardware, load_measurements
+    from hpc_ds1.encoder import NOUL, build_examples, describe
+    hw = load_hardware()
+    tables, failed = build_tables(load_measurements())
+    tables = {k: v for k, v in tables.items() if k[0] == "stencil"}
+    failed = {k: v for k, v in failed.items() if k[0] == "stencil"}
+    states = build_states(tables, hw)
+    exs = build_examples(states, tables, failed, hw, per_state=7, seed=0)
+    assert exs and all(0 <= e.answer < len(e.options) for e in exs)
+    assert any(e.held_out_phrasing for e in exs) and any(not e.held_out_phrasing for e in exs)
+    for e in exs:
+        if e.family == "device":  # stencil's best measured config is on the GPU
+            assert e.options[e.answer] == "the GPU"
+        if e.family in ("action_helps", "near_best", "fails"):
+            assert e.options == NOUL
+    assert "Measured: runtime" in describe(states[0]["state"])
