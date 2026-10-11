@@ -16,6 +16,8 @@ Endpoints
     POST /v1/tune             {workload, size, config, threshold?, max_steps?}
                               closed-loop tuning in one call; every step runs on this machine
     POST /v1/predict          {workload, size} -> System 1: full config from the job description, nothing run
+    POST /v1/ask              {job or state, questions: {key: {type: noul|choice, question, options?}}}
+                              -> free-text questions answered by the fine-tuned encoder (models/encoder)
     POST /v1/sessions         same body (+ start: "system1"|"given") -> background tuning session that
                               pauses for approval; "system1" starts from System 1's pick (dual process)
     GET  /v1/sessions[/<id>]  session list / one session with every run and decision
@@ -75,6 +77,25 @@ class App:
         self.audit = AuditLog()
         self.sessions = Sessions(model, self.lock, self.audit)
         self.fleet = Fleet(audit=self.audit)
+        self._answerer = None
+
+    def answerer(self):
+        if self._answerer is None:
+            path = Path(__file__).resolve().parent.parent / "models" / "encoder"
+            if not (path / "scorer.pt").exists():
+                raise FileNotFoundError("no question encoder yet; train it with scripts/train_encoder.py")
+            from .encoder import Answerer
+            self._answerer = Answerer(path)
+        return self._answerer
+
+    def ask(self, body):
+        qs = body.get("questions") or {}
+        if not qs:
+            raise ValueError("send at least one question: {key: {type, question, options?}}")
+        with self.lock:
+            state, source = self._state(body)
+            out = [a.to_dict() for a in self.answerer().ask(state, qs, self.model.guard)]
+        return {"answers": out, "state": state, "telemetry_source": source}
 
     def _parse_job(self, body):
         w = body.get("workload")
@@ -303,6 +324,8 @@ def make_handler(app: App):
                     return self._send(200, app.start_session(body))
                 if path == "/v1/predict":
                     return self._send(200, app.predict(body))
+                if path == "/v1/ask":
+                    return self._send(200, app.ask(body))
                 if path.startswith("/v1/sessions/") and path.endswith("/approve"):
                     s = app.sessions.answer(path.split("/")[3], body.get("approve", False), body.get("by"))
                     return self._send(200, s.to_dict())

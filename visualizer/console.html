@@ -595,7 +595,9 @@ var DEFAULT_QS = {
   route: { type: "route", question: "Run it automatically, ask to confirm, or escalate to an engineer?", auto_at: 0.85, escalate_below: 0.5 },
   familiar: { type: "noul", question: "Has the model seen jobs like this on this machine?" },
   should_stop: { type: "noul", question: "Is this configuration already as fast as it gets?" },
-  expected_gain: { type: "score", question: "How much faster can this job get from here?", levels: "0-100%" }
+  expected_gain: { type: "score", question: "How much faster can this job get from here?", levels: "0-100%" },
+  gpu_worth_it: { type: "noul", question: "Would moving this job to the GPU make it faster?" },
+  bf16_or_fp32: { type: "choice", question: "Should this job use fp32 or bf16?", options: ["fp32", "bf16"] }
 };
 var PRESETS = [
   ["Stencil 160 · slow start", { workload: "stencil", size: 160, config: { ranks: 1, threads: 1, gpu: false, precision: "fp32" } }],
@@ -636,7 +638,10 @@ function pgRun() {
   $("pgThr").textContent = "auto ≥ " + (body.threshold != null ? body.threshold : 0.85) + " · escalate < " + (body.escalate_below != null ? body.escalate_below : 0.5);
   $("pgRun").disabled = true; $("pgRun").textContent = state.telemetry ? "Deciding…" : "Running job…";
   var s1 = qs.instant_config ? api("/v1/predict", { workload: state.workload, size: state.size }).catch(function (e) { return { error: e.message }; }) : Promise.resolve(null);
-  Promise.all([api("/v1/decide", body), s1]).then(function (r) { pgRender(r[0], qs, r[1]); })
+  var free = {};
+  Object.keys(qs).forEach(function (k) { if (!KNOWN[k] && qs[k] && qs[k].question) free[k] = qs[k]; });
+  var ask = Object.keys(free).length ? api("/v1/ask", Object.assign({}, body, { questions: free })).catch(function (e) { return { error: e.message }; }) : Promise.resolve(null);
+  Promise.all([api("/v1/decide", body), s1, ask]).then(function (r) { pgRender(r[0], qs, r[1], r[2]); })
     .catch(function (e) { $("pgErr").textContent = e.message; })
     .then(function () { $("pgRun").disabled = false; $("pgRun").textContent = "Run"; refreshBadge(); });
 }
@@ -651,12 +656,26 @@ function qrow(key, spec, ans, badge, sub, extra) {
     '</div><div class="badge"><b>' + badge + "</b>" + (sub ? "<div>" + sub + "</div>" : "") + "</div></div>";
 }
 function cfgName(c) { return c.gpu ? "GPU · " + c.threads + " thr · " + c.precision : c.ranks + " rank × " + c.threads + " thr · CPU · " + c.precision; }
-function pgRender(d, qs, s1) {
+function pgRender(d, qs, s1, asked) {
+  var answers = {};
+  ((asked && asked.answers) || []).forEach(function (a) { answers[a.key] = a; });
   var t = d.state && d.state.telemetry, html = "";
   $("pgMeta").textContent = "hpc-ds1 · " + (d.telemetry_source === "measured now" ? "measured live" : "telemetry given") + " · " + d.latency_ms.toFixed(1) + " ms";
   Object.keys(qs).forEach(function (key) {
     var spec = qs[key] || {};
-    if (!KNOWN[key]) { html += qrow(key, spec, '<div class="reasons">HPC-DS1 doesn\'t answer this question.</div><div class="conf">It answers: ' + Object.keys(KNOWN).join(", ") + "</div>", "-", ""); return; }
+    if (!KNOWN[key]) {
+      var a = answers[key];
+      if (a) {
+        var ps = Object.keys(a.probabilities).map(function (o) { return [o, a.probabilities[o]]; }).sort(function (x, y) { return y[1] - x[1]; });
+        html += qrow(key, spec, '<div class="opts">' + ps.slice(0, 4).map(function (p, i) { return '<span class="o' + (i ? "" : " top") + '">' + esc(p[0]) + "</span><span>" + pct(p[1]) + "</span>" + ring(p[1]); }).join("") +
+          '</div><div class="conf">Confidence: ' + pct(a.confidence) + (a.familiar ? "" : " · " + pill("escalate", "unfamiliar job")) + "</div>" +
+          (a.reasons && a.reasons.length ? '<div class="reasons">' + a.reasons.map(esc).join("<br>") + "</div>" : ""),
+          a.kind === "noul" ? "Noul" : "Choice", "encoder · " + a.latency_ms.toFixed(0) + " ms", "");
+      } else {
+        html += qrow(key, spec, '<div class="reasons">' + esc((asked && asked.error) || "Add a \"question\" (and \"type\": noul | choice with \"options\") to ask it in free text.") + "</div>", "-", "");
+      }
+      return;
+    }
     if (key === "instant_config") {
       if (!s1 || s1.error) { html += qrow(key, spec, '<div class="reasons">' + esc((s1 && s1.error) || "System 1 not available") + "</div>", "System 1", ""); return; }
       html += qrow(key, spec, '<div class="main">' + esc(cfgName(s1.config)) + '</div><div class="conf">Confidence: ' + pct(s1.confidence) + " · expected " + ms(s1.expected_runtime_sec) + " · " + pill(s1.mode) + "</div>" +
