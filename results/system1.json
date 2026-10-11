@@ -16,34 +16,41 @@
     "pick_within_5pct": 0.8333,
     "pct_of_best_speed": 96.9,
     "picked_failing_config": 0,
-    "confidence_ece_leave_one_out": 0.0482,
+    "confidence_ece_leave_one_out": 0.0556,
     "reliability": [
       {
         "lo": 0.6,
         "hi": 0.7,
         "count": 3,
         "accuracy": 0.3333,
-        "confidence": 0.6546
+        "confidence": 0.6458
       },
       {
         "lo": 0.7,
         "hi": 0.8,
-        "count": 12,
-        "accuracy": 0.9167,
-        "confidence": 0.7786
+        "count": 11,
+        "accuracy": 0.8182,
+        "confidence": 0.7669
       },
       {
         "lo": 0.8,
         "hi": 0.9,
-        "count": 57,
-        "accuracy": 0.8421,
-        "confidence": 0.8571
+        "count": 48,
+        "accuracy": 0.875,
+        "confidence": 0.847
+      },
+      {
+        "lo": 0.9,
+        "hi": 1.0,
+        "count": 10,
+        "accuracy": 0.8,
+        "confidence": 0.9159
       }
     ],
-    "confidence_auroc": 0.517,
-    "auto_share_at_085": 0.5278,
-    "auto_within_5pct": 0.8158,
-    "auto_pct_of_best": 97.4,
+    "confidence_auroc": 0.554,
+    "auto_share_at_085": 0.4028,
+    "auto_within_5pct": 0.8276,
+    "auto_pct_of_best": 97.6,
     "per_workload": {
       "gemm": {
         "within_5pct": 0.889,
@@ -117,7 +124,7 @@
           "gpu": true,
           "precision": "fp32"
         },
-        "confidence": 0.734,
+        "confidence": 0.741,
         "system1_pct_of_best": 100.0,
         "used_system2": true,
         "dual_pct_of_best": 100.0,
@@ -132,7 +139,7 @@
           "gpu": true,
           "precision": "bf16"
         },
-        "confidence": 0.804,
+        "confidence": 0.757,
         "system1_pct_of_best": 96.7,
         "used_system2": true,
         "dual_pct_of_best": 96.7,
@@ -147,7 +154,7 @@
           "gpu": true,
           "precision": "bf16"
         },
-        "confidence": 0.848,
+        "confidence": 0.833,
         "system1_pct_of_best": 100.0,
         "used_system2": true,
         "dual_pct_of_best": 100.0,
@@ -162,9 +169,9 @@
           "gpu": false,
           "precision": "bf16"
         },
-        "confidence": 0.83,
+        "confidence": 0.921,
         "system1_pct_of_best": 95.1,
-        "used_system2": true,
+        "used_system2": false,
         "dual_pct_of_best": 95.1,
         "dual_runs": 1
       },
@@ -177,7 +184,7 @@
           "gpu": true,
           "precision": "bf16"
         },
-        "confidence": 0.839,
+        "confidence": 0.814,
         "system1_pct_of_best": 100.0,
         "used_system2": true,
         "dual_pct_of_best": 100.0,
@@ -192,7 +199,7 @@
           "gpu": false,
           "precision": "fp32"
         },
-        "confidence": 0.856,
+        "confidence": 0.914,
         "system1_pct_of_best": 100.0,
         "used_system2": false,
         "dual_pct_of_best": 100.0,
@@ -207,7 +214,7 @@
           "gpu": true,
           "precision": "bf16"
         },
-        "confidence": 0.877,
+        "confidence": 0.878,
         "system1_pct_of_best": 98.5,
         "used_system2": false,
         "dual_pct_of_best": 98.5,
@@ -222,7 +229,7 @@
           "gpu": true,
           "precision": "bf16"
         },
-        "confidence": 0.795,
+        "confidence": 0.793,
         "system1_pct_of_best": 99.7,
         "used_system2": true,
         "dual_pct_of_best": 99.7,
@@ -282,7 +289,7 @@
     }
   ],
   "latency_ms": {
-    "median": 9.269,
-    "p99": 11.409
+    "median": 10.417,
+    "p99": 14.621
   }
 }

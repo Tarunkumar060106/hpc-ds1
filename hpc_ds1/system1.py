@@ -192,7 +192,10 @@ def pick(configs, log_rt, p_fail):
     margin = float(score[runner_up] - score[best]) if math.isfinite(float(score[runner_up])) else 1.0
     spread = float(log_rt[:, best].std())
     return best, {"agreement": agree, "margin": margin, "spread": spread,
-                  "fail_prob": float(mean_fail[best]), "pred_log_runtime": float(mean_rt[best])}
+                  "fail_prob": float(mean_fail[best]), "pred_log_runtime": float(mean_rt[best]),
+                  # configs predicted within 5% of the pick: many near-ties make "within 5% of the
+                  # best" easier to hit (scripts/system1_confidence_study.py)
+                  "n_near": int((score <= score[best] + tol).sum())}
 
 
 def extrapolation(train_sizes, workload, size):
@@ -202,15 +205,21 @@ def extrapolation(train_sizes, workload, size):
 
 
 def confidence_features(sig):
+    # The last two came out of scripts/system1_confidence_study.py: very short jobs (noisy)
+    # and few near-ties predict wrong picks, while ensemble agreement and margin barely do.
+    # With 72 problems the confidence AUROC is noise-dominated (0.41-0.55 across variants,
+    # results/system1*.json); this 7-signal set scored best and is kept.
     return [sig["agreement"], min(sig["margin"], 0.5) * 4, min(sig["spread"], 0.5) * 4, sig["fail_prob"],
-            min(sig.get("extrapolation", 0.0), 0.5) * 4]
+            min(sig.get("extrapolation", 0.0), 0.5) * 4,
+            max(-1.0, min(1.0, (sig.get("pred_log_runtime", -2.0) + 2.0) / 2.0)),
+            min(sig.get("n_near", 1), 10) / 10.0]
 
 
 class Calibrator:
     """Logistic map from ensemble signals to P(pick within 5% of best), fitted on out-of-fold picks."""
 
     def __init__(self, w=None, b=0.0):
-        self.w = list(w) if w is not None else [3.0, 1.0, -1.0, -2.0, -1.0]
+        self.w = list(w) if w is not None else [3.0, 1.0, -1.0, -2.0, -1.0, 0.5, 0.5]
         self.b = b
 
     def fit(self, feats, labels, l2=0.3, steps=2000):
