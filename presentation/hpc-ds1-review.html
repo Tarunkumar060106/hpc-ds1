@@ -401,10 +401,10 @@ GET  /v1/audit
     <h2 class="reveal d2">Plain-English questions, answered like Jev, <span class="hl">grounded in real runs.</span></h2>
     <div class="grid g3">
         <div class="card reveal d3"><div class="k">You ask</div><h3>"Would the graphics card speed this up?"</h3><p>Training job, 2 workers × 4 threads on the CPU → <b style="color:var(--teal)">yes, 76%</b>. Same question for the server job → <b style="color:var(--teal)">no, 75%</b>.</p></div>
-        <div class="card stat reveal d4"><div class="n hl">83%</div><div class="l">right on wording and on problem sizes it never saw (most-common-answer baseline: 63%)</div></div>
-        <div class="card stat reveal d5"><div class="n">28 ms</div><div class="l">per question: ModernBERT reads question + options + the job in one pass, like Laya</div></div>
+        <div class="card stat reveal d4"><div class="n hl">87%</div><div class="l">right on wording and problem sizes it never saw (most-common-answer baseline: 63%)</div></div>
+        <div class="card stat reveal d5"><div class="n">29 ms</div><div class="l">per question: ModernBERT reads question + options + the job + System 1's estimates in one pass</div></div>
     </div>
-    <p class="lead reveal d6" style="font-size:30px">Every training answer comes from the measurements, never written by hand. Weakest question: "will this one change make it faster?" (about 60%).</p>
+    <p class="lead reveal d6" style="font-size:30px">Every training answer comes from the measurements. Reading System 1's estimates lifted it from 83% to 87%; weakest question: "will this setup crash?"</p>
 </section>
 
 <!-- ========== DIFFERENTIATOR: MATRIX ========== -->

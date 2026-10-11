@@ -50,7 +50,7 @@ hpc-ds1 plan    --workload stencil --size 160    # dual process: System 1 picks,
 | Rules of thumb | 88.1% | 3.6 |
 
 - Cross-validated over all 72 problems (9 folds by size): 83.3% of instant picks are within 5% of the best configuration, reaching 96.9% of best speed, with 0 crashing picks. The dual process gives up about 0.4 points of speed against System 2 alone for 5x fewer real runs.
-- **Confidence:** calibrated (error 0.05), and about half of jobs are confident enough to skip System 2 (those reach 97.4% of best speed). It separated good from bad picks with AUROC 0.63 on 48 problems but only 0.52 on 72, so treat it as weak. The recipe was chosen by cross-validation without touching the test sizes (`scripts/tune_system1.py`, `results/system1_tuning.json`); it traded about one problem's worth of accuracy for this.
+- **Confidence:** calibrated (error about 0.05), but with 72 problems it barely separates good picks from bad: AUROC 0.41–0.55 across every signal set tried (`results/experiments/system1_confidence_*.json`), i.e. noise-dominated. More measured problems (level 5, in use) is the fix, not more tuning. About 40% of jobs are confident enough to skip System 2. The recipe was chosen by cross-validation without touching the test sizes (`scripts/tune_system1.py`, `results/system1_tuning.json`); it traded about one problem's worth of accuracy for this.
 - **Limitations:** System 1's confidence barely separates good picks from bad, so System 2's check matters. Results on the 8 test sizes are a small sample.
 - On a workload System 1 never saw, picks can be badly wrong (the server workload, held out, picks the GPU, which has no server version). The size and workload checks escalate those.
 
@@ -62,7 +62,9 @@ Reproduce: `python scripts/train_system1.py` → `model/system1.pt`, `results/sy
 
 ## Ask it anything: a Laya-style question encoder
 
-`hpc_ds1/encoder.py` answers free-text questions about a job, Jev-style: you give a question, a type (`noul` = yes/no/unclear, or `choice` with options), and the job; a fine-tuned **ModernBERT-base** reads question + options + the job described as text in one pass and scores the options (about 28 ms on the GPU, temperature-calibrated).
+`hpc_ds1/encoder.py` answers free-text questions about a job, Jev-style: you give a question, a type (`noul` = yes/no/unclear, or `choice` with options), and the job; a fine-tuned **ModernBERT-base** reads question + options + the job described as text in one pass and scores the options (about 29 ms on the GPU, temperature-calibrated).
+
+The job text includes **System 1's runtime estimate for every one-step change** ("moving the job to the GPU x0.12; switching to bf16 x0.75; ..."), so the encoder reads performance evidence instead of guessing it. During training these estimates come from System 1 models that never saw that problem (`scripts/system1_oof.py`), so they are as imperfect as the live ones.
 
 ```bash
 curl -X POST http://127.0.0.1:8765/v1/ask -H "Content-Type: application/json" -d '{"workload": "mltrain", "size": 4096,
@@ -75,11 +77,11 @@ Every training question is answered from the real measurements (e.g. "will bf16 
 
 | Questions (9,148 from 2,589 measured states) | Accuracy | Most-common-answer baseline | Calibration error |
 |---|---|---|---|
-| Unseen wording (incl. unseen synonyms) | **83.1%** | 61.6% | 0.024 |
-| Unseen problem sizes | **83.4%** | 55.8% | 0.028 |
-| Unseen wording and unseen problems | **82.8%** | 63.0% | 0.056 |
+| Unseen wording (incl. unseen synonyms) | **85.8%** (83.1% without System 1 hints) | 61.6% | 0.036 |
+| Unseen problem sizes | **87.4%** (83.4%) | 55.8% | 0.016 |
+| Unseen wording and unseen problems | **87.2%** (82.8%) | 63.0% | 0.045 |
 
-Strong on "CPU or GPU?", "fp32 or bf16?", "which of these two setups is faster?", "will this crash?"; weakest on "will this one change make it faster?" (about 60%). The familiarity guard marks answers about unfamiliar jobs. Weights are not in git: `HF_HOME=models/hf python scripts/train_encoder.py` (downloads ModernBERT-base, about 600 MB, then about 8 minutes on an RTX 4050).
+Strong on "CPU or GPU?" and "fp32 or bf16?" (100%), "which of these two setups is faster?" and "is this near the best?" (85–92%); "will this one change make it faster?" improved from about 60% to 68–78% with the hints. Weak: "will this setup crash?" (50–78%). Adding System 1's failure predictions to the text was tried and was worse on validation, so it is off (`results/experiments/`). The familiarity guard marks answers about unfamiliar jobs. Weights are not in git: `HF_HOME=models/hf python scripts/train_encoder.py` (downloads ModernBERT-base, about 600 MB, then about 8 minutes on an RTX 4050).
 
 ## Quick start
 
