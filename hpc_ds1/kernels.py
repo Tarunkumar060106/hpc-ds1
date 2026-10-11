@@ -60,7 +60,7 @@ class GEMM(Kernel):
     name = "gemm"
     display_name = "Dense matrix multiply"
     character = "compute-bound, O(N³), large result to gather"
-    sizes = [1024, 1280, 1536, 2048, 2560, 3072]
+    sizes = [1024, 1280, 1536, 1792, 2048, 2304, 2560, 2816, 3072]
     test_size = 2048
     size_unit = "N (N×N matrices)"
 
@@ -82,7 +82,7 @@ class FFT3D(Kernel):
     name = "fft"
     display_name = "3D FFT (slab decomposition)"
     character = "transpose/communication-heavy, O(N³ log N)"
-    sizes = [64, 96, 128, 160, 192, 256]
+    sizes = [64, 80, 96, 112, 128, 160, 192, 224, 256]
     test_size = 192
     size_unit = "N (N³ complex grid)"
 
@@ -109,7 +109,7 @@ class Stencil3D(Kernel):
     name = "stencil"
     display_name = "3D Jacobi stencil"
     character = "memory-bandwidth-bound, halo/ghost-zone decomposition"
-    sizes = [96, 112, 128, 160, 176, 192]
+    sizes = [96, 104, 112, 128, 144, 160, 176, 184, 192]
     test_size = 160
     size_unit = "N (N³ grid, 8 sweeps)"
     iters = 8
@@ -141,7 +141,7 @@ class SpMV(Kernel):
     name = "spmv"
     display_name = "Sparse matrix-vector multiply"
     character = "memory-bound, irregular access, 16 nnz/row, 10 products"
-    sizes = [200_000, 300_000, 400_000, 800_000, 1_200_000, 1_600_000]
+    sizes = [200_000, 250_000, 300_000, 400_000, 600_000, 800_000, 1_000_000, 1_200_000, 1_600_000]
     test_size = 800_000
     size_unit = "rows"
     nnz_per_row = 16
@@ -173,7 +173,7 @@ class NBody(Kernel):
     name = "nbody"
     display_name = "N-body forces (all pairs)"
     character = "compute-bound, O(N²), small result to gather"
-    sizes = [2048, 2560, 3072, 4096, 5120, 6144]
+    sizes = [2048, 2304, 2560, 3072, 3584, 4096, 4608, 5120, 6144]
     test_size = 4096
     size_unit = "bodies"
     block = 256
@@ -204,7 +204,7 @@ class MonteCarlo(Kernel):
     name = "montecarlo"
     display_name = "Monte Carlo option pricing"
     character = "embarrassingly parallel, RNG-heavy, scalar result"
-    sizes = [2_000_000, 3_000_000, 4_000_000, 8_000_000, 12_000_000, 16_000_000]
+    sizes = [2_000_000, 2_500_000, 3_000_000, 4_000_000, 6_000_000, 8_000_000, 10_000_000, 12_000_000, 16_000_000]
     test_size = 8_000_000
     size_unit = "paths (Asian option, 16 steps)"
     steps = 16
@@ -248,7 +248,7 @@ class MLTrain(Kernel):
     name = "mltrain"
     display_name = "Neural network training step"
     character = "AI training: matmul-heavy forward + backward, gradient all-reduce"
-    sizes = [1024, 1536, 2048, 4096, 6144, 8192]
+    sizes = [1024, 1280, 1536, 2048, 3072, 4096, 5120, 6144, 8192]
     test_size = 4096
     size_unit = "samples per step (MLP 256-1024-1024-10)"
     dims = (256, 1024, 1024, 10)
@@ -312,7 +312,7 @@ class Server(Kernel):
     name = "server"
     display_name = "Backend request handling"
     character = "server: JSON parse, business logic, compress, hash; Python/GIL-bound"
-    sizes = [1000, 1500, 2000, 4000, 6000, 8000]
+    sizes = [1000, 1250, 1500, 2000, 3000, 4000, 5000, 6000, 8000]
     test_size = 4000
     size_unit = "requests per batch"
     tolerance = 0.0
