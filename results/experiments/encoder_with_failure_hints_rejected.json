@@ -1,0 +1,69 @@
+{
+  "base_model": "answerdotai/ModernBERT-base",
+  "epochs": 5,
+  "hints": true,
+  "temperature": 1.4708,
+  "train_questions": 5777,
+  "train_minutes": 12.6,
+  "seen_wording_seen_problems(val)": {
+    "n": 641,
+    "accuracy": 0.8549,
+    "ece": 0.0131,
+    "baseline_most_common": 0.5772,
+    "per_family": {
+      "fails": 0.842,
+      "precision": 0.968,
+      "near_best": 0.897,
+      "next_move": 0.752,
+      "compare": 0.854,
+      "action_helps": 0.685,
+      "device": 1.0
+    }
+  },
+  "unseen_wording": {
+    "n": 1720,
+    "accuracy": 0.8494,
+    "ece": 0.0201,
+    "baseline_most_common": 0.6163,
+    "per_family": {
+      "fails": 0.548,
+      "next_move": 0.684,
+      "near_best": 0.87,
+      "device": 1.0,
+      "action_helps": 0.629,
+      "compare": 0.876,
+      "precision": 0.994
+    }
+  },
+  "test_sizes_seen_wording": {
+    "n": 783,
+    "accuracy": 0.8531,
+    "ece": 0.0206,
+    "baseline_most_common": 0.5581,
+    "per_family": {
+      "precision": 1.0,
+      "device": 1.0,
+      "near_best": 0.862,
+      "fails": 0.652,
+      "action_helps": 0.703,
+      "next_move": 0.741,
+      "compare": 0.887
+    }
+  },
+  "test_sizes_unseen_wording": {
+    "n": 227,
+    "accuracy": 0.8634,
+    "ece": 0.0304,
+    "baseline_most_common": 0.63,
+    "per_family": {
+      "next_move": 0.677,
+      "precision": 1.0,
+      "compare": 0.882,
+      "device": 1.0,
+      "action_helps": 0.815,
+      "fails": 0.3,
+      "near_best": 0.865
+    }
+  },
+  "latency_ms_per_question": 25.8
+}

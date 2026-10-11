@@ -1,0 +1,13 @@
+{
+  "problems": 72,
+  "right_share": 0.8333,
+  "signals": {
+    "margin": 0.501,
+    "device_margin": 0.518,
+    "log_runtime": 0.706,
+    "pick_fail_prob": 0.648,
+    "n_near": 0.667,
+    "workload_track_record": 0.511
+  },
+  "combined_leave_one_out_auroc": 0.708
+}

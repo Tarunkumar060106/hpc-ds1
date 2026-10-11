@@ -1,0 +1,295 @@
+{
+  "good_within": 1.05,
+  "threshold": 0.85,
+  "hp": {
+    "width": 256,
+    "depth": 3,
+    "epochs": 600,
+    "lr": 0.002,
+    "wd": 0.001,
+    "bag": true,
+    "rank_w": 3.0,
+    "members": 8
+  },
+  "system1_cv": {
+    "problems": 72,
+    "pick_within_5pct": 0.8333,
+    "pct_of_best_speed": 96.9,
+    "picked_failing_config": 0,
+    "confidence_ece_leave_one_out": 0.0556,
+    "reliability": [
+      {
+        "lo": 0.6,
+        "hi": 0.7,
+        "count": 3,
+        "accuracy": 0.3333,
+        "confidence": 0.6458
+      },
+      {
+        "lo": 0.7,
+        "hi": 0.8,
+        "count": 11,
+        "accuracy": 0.8182,
+        "confidence": 0.7669
+      },
+      {
+        "lo": 0.8,
+        "hi": 0.9,
+        "count": 48,
+        "accuracy": 0.875,
+        "confidence": 0.847
+      },
+      {
+        "lo": 0.9,
+        "hi": 1.0,
+        "count": 10,
+        "accuracy": 0.8,
+        "confidence": 0.9159
+      }
+    ],
+    "confidence_auroc": 0.554,
+    "auto_share_at_085": 0.4028,
+    "auto_within_5pct": 0.8276,
+    "auto_pct_of_best": 97.6,
+    "per_workload": {
+      "gemm": {
+        "within_5pct": 0.889,
+        "pct_of_best": 97.1
+      },
+      "fft": {
+        "within_5pct": 0.667,
+        "pct_of_best": 93.5
+      },
+      "stencil": {
+        "within_5pct": 0.889,
+        "pct_of_best": 98.4
+      },
+      "spmv": {
+        "within_5pct": 1.0,
+        "pct_of_best": 98.4
+      },
+      "nbody": {
+        "within_5pct": 0.778,
+        "pct_of_best": 95.6
+      },
+      "montecarlo": {
+        "within_5pct": 0.778,
+        "pct_of_best": 98.1
+      },
+      "mltrain": {
+        "within_5pct": 0.667,
+        "pct_of_best": 94.5
+      },
+      "server": {
+        "within_5pct": 1.0,
+        "pct_of_best": 100.0
+      }
+    }
+  },
+  "dual_process_test_sizes": {
+    "summary": [
+      {
+        "policy": "System 1 alone",
+        "pct_of_best": 98.7,
+        "mean_runs": 1.0
+      },
+      {
+        "policy": "System 1 -> System 2",
+        "pct_of_best": 98.7,
+        "mean_runs": 1.0
+      },
+      {
+        "policy": "Dual process (System 2 only when unsure)",
+        "pct_of_best": 98.7,
+        "mean_runs": 1.0
+      },
+      {
+        "policy": "System 2 alone, from 1x1 CPU fp32",
+        "pct_of_best": 99.1,
+        "mean_runs": 5.12
+      },
+      {
+        "policy": "Rules of thumb, from 1x1 CPU fp32",
+        "pct_of_best": 88.1,
+        "mean_runs": 3.62
+      }
+    ],
+    "per_problem": [
+      {
+        "workload": "fft",
+        "size": 192,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 8,
+          "gpu": true,
+          "precision": "fp32"
+        },
+        "confidence": 0.741,
+        "system1_pct_of_best": 100.0,
+        "used_system2": true,
+        "dual_pct_of_best": 100.0,
+        "dual_runs": 1
+      },
+      {
+        "workload": "gemm",
+        "size": 2048,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 8,
+          "gpu": true,
+          "precision": "bf16"
+        },
+        "confidence": 0.757,
+        "system1_pct_of_best": 96.7,
+        "used_system2": true,
+        "dual_pct_of_best": 96.7,
+        "dual_runs": 1
+      },
+      {
+        "workload": "mltrain",
+        "size": 4096,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 8,
+          "gpu": true,
+          "precision": "bf16"
+        },
+        "confidence": 0.833,
+        "system1_pct_of_best": 100.0,
+        "used_system2": true,
+        "dual_pct_of_best": 100.0,
+        "dual_runs": 1
+      },
+      {
+        "workload": "montecarlo",
+        "size": 8000000,
+        "system1_config": {
+          "ranks": 8,
+          "threads": 4,
+          "gpu": false,
+          "precision": "bf16"
+        },
+        "confidence": 0.921,
+        "system1_pct_of_best": 95.1,
+        "used_system2": false,
+        "dual_pct_of_best": 95.1,
+        "dual_runs": 1
+      },
+      {
+        "workload": "nbody",
+        "size": 4096,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 16,
+          "gpu": true,
+          "precision": "bf16"
+        },
+        "confidence": 0.814,
+        "system1_pct_of_best": 100.0,
+        "used_system2": true,
+        "dual_pct_of_best": 100.0,
+        "dual_runs": 1
+      },
+      {
+        "workload": "server",
+        "size": 4000,
+        "system1_config": {
+          "ranks": 8,
+          "threads": 1,
+          "gpu": false,
+          "precision": "fp32"
+        },
+        "confidence": 0.914,
+        "system1_pct_of_best": 100.0,
+        "used_system2": false,
+        "dual_pct_of_best": 100.0,
+        "dual_runs": 1
+      },
+      {
+        "workload": "spmv",
+        "size": 800000,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 4,
+          "gpu": true,
+          "precision": "bf16"
+        },
+        "confidence": 0.878,
+        "system1_pct_of_best": 98.5,
+        "used_system2": false,
+        "dual_pct_of_best": 98.5,
+        "dual_runs": 1
+      },
+      {
+        "workload": "stencil",
+        "size": 160,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 8,
+          "gpu": true,
+          "precision": "bf16"
+        },
+        "confidence": 0.793,
+        "system1_pct_of_best": 99.7,
+        "used_system2": true,
+        "dual_pct_of_best": 99.7,
+        "dual_runs": 1
+      }
+    ],
+    "note": "8 problems, one session each: small sample"
+  },
+  "leave_one_workload_out": [
+    {
+      "held_out": "gemm",
+      "within_5pct": 0.778,
+      "pct_of_best": 97.2,
+      "failing_picks": 0
+    },
+    {
+      "held_out": "fft",
+      "within_5pct": 0.222,
+      "pct_of_best": 1.0,
+      "failing_picks": 6
+    },
+    {
+      "held_out": "stencil",
+      "within_5pct": 0.333,
+      "pct_of_best": 69.3,
+      "failing_picks": 0
+    },
+    {
+      "held_out": "spmv",
+      "within_5pct": 0.667,
+      "pct_of_best": 94.7,
+      "failing_picks": 0
+    },
+    {
+      "held_out": "nbody",
+      "within_5pct": 0.667,
+      "pct_of_best": 90.0,
+      "failing_picks": 0
+    },
+    {
+      "held_out": "montecarlo",
+      "within_5pct": 0.0,
+      "pct_of_best": 79.5,
+      "failing_picks": 0
+    },
+    {
+      "held_out": "mltrain",
+      "within_5pct": 0.667,
+      "pct_of_best": 95.0,
+      "failing_picks": 0
+    },
+    {
+      "held_out": "server",
+      "within_5pct": 0.0,
+      "pct_of_best": 0.1,
+      "failing_picks": 9
+    }
+  ],
+  "latency_ms": {
+    "median": 10.18,
+    "p99": 12.671
+  }
+}
