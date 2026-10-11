@@ -159,6 +159,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-live", action="store_true")
     ap.add_argument("--sizes", default="tiny,small,medium")
+    ap.add_argument("--ensemble", type=int, default=5,
+                    help="also train an ensemble of this many seeds; kept only if it is better on validation")
     args = ap.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -184,6 +186,31 @@ def main():
     chosen = min(sweep, key=lambda s: s["val_loss"])
     net = nets[chosen["size"]]
     log(f"selected {chosen['size']} on validation loss")
+
+    # Single network vs an ensemble of seeds, decided on validation only (loss and calibration
+    # after temperature scaling). The test set plays no part in the choice.
+    def val_score(m):
+        vl, vacc, vo = evaluate(m, va)
+        t = fit_temperature(vo["logits"], va["good"])
+        p = F.softmax(vo["logits"] / t, 1)
+        c, pr = p.max(1)
+        return vl, vacc, reliability(c.cpu(), va["good"].gather(1, pr.unsqueeze(1)).squeeze(1).cpu())[0]
+    ensemble_choice = {"members": 1}
+    if args.ensemble > 1:
+        from hpc_ds1.net import EnsembleNet
+        members = [net] + [train_one(chosen["size"], tr, va, device, seed=s)[0] for s in range(1, args.ensemble)]
+        ens = EnsembleNet(members).to(device)
+        sv, se = val_score(net), val_score(ens)
+        log(f"validation  single: loss {sv[0]:.4f} acc {sv[1]:.3f} ECE {sv[2]:.3f}  |  "
+            f"ensemble of {args.ensemble}: loss {se[0]:.4f} acc {se[1]:.3f} ECE {se[2]:.3f}")
+        if se[2] < sv[2] and se[0] <= sv[0] * 1.01:
+            net = ens
+            log(f"using the ensemble of {args.ensemble} (better calibrated on validation)")
+        else:
+            log("keeping the single network (ensemble not better on validation)")
+        ensemble_choice = {"members": len(getattr(net, "members", [net])), "candidates": args.ensemble,
+                           "val_single": {"loss": round(sv[0], 5), "acc": round(sv[1], 4), "ece": sv[2]},
+                           "val_ensemble": {"loss": round(se[0], 5), "acc": round(se[1], 4), "ece": se[2]}}
 
     _, _, vout = evaluate(net, va)
     temp = fit_temperature(vout["logits"], va["good"])
@@ -232,6 +259,7 @@ def main():
         "regret_model": regret(te_rows, pred_names), "regret_rules": regret(te_rows, heur),
         "stop_head_accuracy": round(((torch.sigmoid(tout["stop_logit"]) > 0.5) == (y == STOP_INDEX)).float().mean().item(), 4),
         "improvement_mae": round((tout["improvement"].clamp(0, 1) - te["imp"]).abs().mean().item(), 4),
+        "ensemble": ensemble_choice,
     }
     log(f"\npicks a best move {metrics['accuracy']:.3f} (exact label {exact:.3f}; rules {metrics['rules_accuracy']:.3f}, "
         f"majority '{majority}' {metrics['majority_accuracy']:.3f})  ECE {ece_raw:.3f} -> {ece:.3f} (T={temp:.2f})")

@@ -164,7 +164,9 @@ def reliability(conf, correct, bins=10):
 def save_checkpoint(path, net, meta, guard=None):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save({"hparams": net.hparams, "state_dict": net.state_dict(), "feature_version": FEATURE_VERSION,
+    ensemble = len(net.members) if hasattr(net, "members") else None
+    torch.save({"hparams": getattr(net, "member_hparams", net.hparams), "ensemble": ensemble,
+                "state_dict": net.state_dict(), "feature_version": FEATURE_VERSION,
                 "meta": meta, "guard": guard.to_dict() if guard else None}, path)
 
 

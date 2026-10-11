@@ -108,7 +108,11 @@ class HPCDS1:
         ckpt = torch.load(path, map_location=device, weights_only=False)
         if ckpt.get("feature_version") != FEATURE_VERSION:
             raise ValueError(f"checkpoint feature_version {ckpt.get('feature_version')} != {FEATURE_VERSION}; retrain")
-        net = HPCDS1Net(**ckpt["hparams"])
+        if ckpt.get("ensemble"):
+            from .net import EnsembleNet
+            net = EnsembleNet([HPCDS1Net(**ckpt["hparams"]) for _ in range(ckpt["ensemble"])])
+        else:
+            net = HPCDS1Net(**ckpt["hparams"])
         net.load_state_dict(ckpt["state_dict"])
         guard = FamiliarityGuard.from_dict(ckpt["guard"]) if ckpt.get("guard") else None
         model = cls(net, device, ckpt.get("meta"), guard)

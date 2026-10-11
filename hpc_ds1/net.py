@@ -235,3 +235,37 @@ def summarize_trace(out, index=0):
             "heads": [[[round(v, 4) for v in row] for row in head] for head in w[index].detach().cpu().tolist()]
         }
     return layers
+
+
+class EnsembleNet(nn.Module):
+    """Several HPCDS1Nets trained with different seeds, averaged in logit space.
+
+    Averaging independently trained networks usually gives better-calibrated
+    probabilities than any single one. Same inputs and outputs as HPCDS1Net,
+    one temperature for the averaged logits; the layer explorer traces the
+    first member."""
+
+    def __init__(self, members):
+        super().__init__()
+        self.members = nn.ModuleList(members)
+        self.register_buffer("temperature", torch.ones(1))
+        self.member_hparams = dict(members[0].hparams)
+        self.hparams = {**self.member_hparams, "ensemble": len(members)}
+        self.workloads = members[0].workloads
+        self.modules_in = members[0].modules_in
+
+    def forward(self, feats, trace=False):
+        outs = [m(feats, trace=trace and i == 0) for i, m in enumerate(self.members)]
+        logits = torch.stack([o["logits"] for o in outs]).mean(0)
+        out = {"logits": logits, "probs": F.softmax(logits / self.temperature, dim=-1),
+               "stop_logit": torch.stack([o["stop_logit"] for o in outs]).mean(0),
+               "improvement": torch.stack([o["improvement"] for o in outs]).mean(0)}
+        if trace:
+            out["trace"], out["attention"] = outs[0]["trace"], outs[0]["attention"]
+        return out
+
+    def count_parameters(self):
+        return sum(p.numel() for p in self.parameters())
+
+    def layer_catalog(self):
+        return self.members[0].layer_catalog()

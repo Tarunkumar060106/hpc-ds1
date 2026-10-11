@@ -2,7 +2,7 @@
 """
 Train and evaluate System 1 (hpc_ds1/system1.py) on the real measurements.
 
-  cross-validation  6 folds by problem size: fold k holds out the k-th size of
+  cross-validation  folds by problem size: fold k holds out the k-th size of
                     every workload, so each of the 48 problems is answered by
                     an ensemble that never saw any run of it
   calibration       confidence = logistic map from ensemble signals to
@@ -73,11 +73,11 @@ def answer(members, hardware, w, size, table, device, train_sizes=None):
 
 
 def cross_validate(rows, hardware, tables, device, hp, quiet=False):
-    """6 folds by problem size: fold k holds out the k-th size of every workload."""
+    """Folds by problem size: fold k holds out the k-th size of every workload."""
     sizes = {w: sorted(KERNELS[w].sizes) for w in WORKLOAD_NAMES}
     oof = []
-    for k in range(6):
-        held = {(w, sizes[w][k]) for w in WORKLOAD_NAMES}
+    for k in range(max(len(v) for v in sizes.values())):
+        held = {(w, sizes[w][k]) for w in WORKLOAD_NAMES if k < len(sizes[w])}
         kept = [r for r in rows if (r["workload"], r["size"]) not in held]
         x, y, f, g = rows_from_measurements(kept, hardware)
         members = train_ensemble(x, y, f, g, device, hp)
@@ -110,8 +110,8 @@ def main(hp=None):
     results = {"good_within": GOOD_WITHIN, "threshold": THRESHOLD, "hp": hp}
     t_all = time.time()
 
-    # ---------------- 6-fold cross-validation by size
-    log(f"=== System 1 cross-validation (6 folds by problem size) · recipe {hp} ===")
+    # ---------------- cross-validation by size (one fold per size position)
+    log(f"=== System 1 cross-validation (folds by problem size) · recipe {hp} ===")
     oof = cross_validate(rows, hardware, tables, device, hp)
 
     # ---------------- calibration (fit on all out-of-fold picks, checked leave-one-out)
