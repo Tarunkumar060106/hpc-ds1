@@ -23,3 +23,5 @@ models/hf/
 
 # Fine-tuned encoder weights (large; rebuild with scripts/train_encoder.py)
 models/encoder/
+models/encoder_nohints/
+models/encoder_hints/

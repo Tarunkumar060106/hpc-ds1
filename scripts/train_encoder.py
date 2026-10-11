@@ -31,12 +31,14 @@ os.environ.setdefault("HF_HOME", str(PROJECT_ROOT / "models" / "hf"))
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
 from hpc_ds1.dataset import build_states, build_tables, load_hardware, load_measurements  # noqa: E402
-from hpc_ds1.encoder import BASE_MODEL, build_examples, encode, load_tokenizer_and_model  # noqa: E402
+from hpc_ds1.encoder import BASE_MODEL, build_examples, encode, load_tokenizer_and_model, oof_hint_provider  # noqa: E402
 from hpc_ds1.kernels import KERNELS  # noqa: E402
 from hpc_ds1.training import fit_temperature, reliability  # noqa: E402
 
 warnings.filterwarnings("ignore")
-OUT = PROJECT_ROOT / "models" / "encoder"
+OUT = Path(os.environ.get("ENCODER_OUT", PROJECT_ROOT / "models" / "encoder"))
+HINTS = os.environ.get("ENCODER_HINTS", "1") == "1"  # read out-of-fold System 1 estimates
+FAIL_HINTS = os.environ.get("ENCODER_FAIL_HINTS", "0") == "1"  # tried; worse on validation
 EPOCHS, BATCH, LR = int(os.environ.get("ENCODER_EPOCHS", 5)), 16, 3e-5
 
 
@@ -73,7 +75,9 @@ def main():
     hardware = load_hardware()
     tables, failed = build_tables(load_measurements())
     states = build_states(tables, hardware)
-    exs = build_examples(states, tables, failed, hardware, per_state=4, seed=0)
+    hints = oof_hint_provider(PROJECT_ROOT / "results" / "system1_oof.json", FAIL_HINTS) if HINTS else None
+    exs = build_examples(states, tables, failed, hardware, per_state=4, seed=0, hints=hints)
+    log(f"System 1 hints in the job text: {HINTS}")
     test_sizes = {(w, k.test_size) for w, k in KERNELS.items()}
     on_test = [e for e in exs if (e.workload, e.size) in test_sizes]
     rest = [e for e in exs if (e.workload, e.size) not in test_sizes]
@@ -132,7 +136,7 @@ def main():
             f"ECE {r['ece']:.3f}  n={r['n']}")
         return r
 
-    res = {"base_model": BASE_MODEL, "epochs": EPOCHS, "temperature": round(temp, 4), "train_questions": len(train),
+    res = {"base_model": BASE_MODEL, "epochs": EPOCHS, "hints": HINTS, "fail_hints": FAIL_HINTS, "temperature": round(temp, 4), "train_questions": len(train),
            "train_minutes": round((time.time() - t0) / 60, 1)}
     res["seen_wording_seen_problems(val)"] = report("validation (seen wording)", val)
     res["unseen_wording"] = report("unseen wording, seen problems", unseen_wording)
@@ -148,7 +152,7 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     model.base.save_pretrained(OUT)
     tok.save_pretrained(OUT)
-    torch.save({"score": model.score.state_dict(), "temperature": temp,
+    torch.save({"score": model.score.state_dict(), "temperature": temp, "hints": HINTS, "fail_hints": FAIL_HINTS,
                 "meta": {k: v for k, v in res.items() if not isinstance(v, dict)}}, OUT / "scorer.pt")
     (PROJECT_ROOT / "results" / "encoder.json").write_text(json.dumps(res, indent=2))
     log(f"saved {OUT} and results/encoder.json")

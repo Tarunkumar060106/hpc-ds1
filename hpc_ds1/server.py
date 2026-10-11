@@ -94,7 +94,7 @@ class App:
             raise ValueError("send at least one question: {key: {type, question, options?}}")
         with self.lock:
             state, source = self._state(body)
-            out = [a.to_dict() for a in self.answerer().ask(state, qs, self.model.guard)]
+            out = [a.to_dict() for a in self.answerer().ask(state, qs, self.model.guard, self.model.system1)]
         return {"answers": out, "state": state, "telemetry_source": source}
 
     def _parse_job(self, body):

@@ -46,8 +46,10 @@ def config_text(c):
     return f"{c['ranks']} rank{'s' if c['ranks'] > 1 else ''} x {c['threads']} thread{'s' if c['threads'] > 1 else ''} on the CPU, {c['precision']}"
 
 
-def describe(state):
-    """One state (hardware, workload, config, telemetry) as the text the encoder reads."""
+def describe(state, hints=None):
+    """One state (hardware, workload, config, telemetry) as the text the encoder reads.
+    hints: {action: estimated runtime ratio after that one change} from System 1, so the
+    encoder can read evidence about a change instead of guessing it."""
     hw, wl, c, t = state["hardware"], state["workload"], state["config"], state.get("telemetry") or {}
     k = KERNELS.get(wl["name"])
     job = f"{k.display_name} ({wl['name']}), size {wl['size']:,} {k.size_unit}" if k else f"{wl['name']}, size {wl['size']:,}"
@@ -57,7 +59,91 @@ def describe(state):
     if t.get("runtime_sec") is not None:
         text += (f" Measured: runtime {t['runtime_sec'] * 1000:.2f} ms, CPU busy {t.get('cpu_util_pct', 0):.0f}%, "
                  f"GPU busy {t.get('gpu_busy_pct', 0):.0f}%, communication {t.get('comm_overhead_pct', 0):.0f}%.")
+    if hints:
+        ratios = {a: r for a, r in hints.items() if a in ACTION_WORDS}
+        # a change System 1 expects to fail is stated as such (stored as an infinite ratio)
+        parts = [f"{ACTION_WORDS[a]} " + ("fails" if r == float("inf") else f"x{r:.2f}")
+                 for a, r in sorted(ratios.items(), key=lambda kv: kv[1])]
+        if parts:
+            text += " System 1 runtime estimates after one change: " + "; ".join(parts) + "."
+        if "_fails" in hints:
+            text += " System 1 expects these to fail: " + (", ".join(hints["_fails"]) or "nothing") + "."
     return text
+
+
+FAIL_GROUPS = [("fp32 on the CPU", lambda c: not c["gpu"] and c["precision"] == "fp32"),
+               ("bf16 on the CPU", lambda c: not c["gpu"] and c["precision"] == "bf16"),
+               ("fp32 on the GPU", lambda c: c["gpu"] and c["precision"] == "fp32"),
+               ("bf16 on the GPU", lambda c: c["gpu"] and c["precision"] == "bf16")]
+
+
+def fail_groups(fail_probs):
+    """{config key string: P(fails)} -> the groups of setups System 1 expects to fail."""
+    out = []
+    for name, member in FAIL_GROUPS:
+        ps = [p for k, p in fail_probs.items() if member(_parse_key(k))]
+        if ps and sum(p >= 0.5 for p in ps) >= len(ps) / 2:
+            out.append(name)
+    return out
+
+
+def _parse_key(k):
+    r, t, g, prec = k.split(",")
+    return {"ranks": int(r), "threads": int(t), "gpu": g in ("1", "True"), "precision": prec}
+
+
+def _ckey(c):
+    return f"{c['ranks']},{c['threads']},{int(c['gpu'])},{c['precision']}"
+
+
+def hints_from_estimates(estimates, state, has_gpu=True, use_fails=False):
+    """estimates: {config key string: predicted runtime} (or {"rt": ..., "fail": ...}) for this
+    problem -> {action: runtime ratio, "_fails": [setup groups expected to fail]}."""
+    fails = None
+    if "rt" in estimates:
+        fails, estimates = estimates.get("fail"), estimates["rt"]
+    if not use_fails:  # failure hints were tried and did not help on validation (results/encoder_failhints.json)
+        fails = None
+    c = state["config"]
+    here = estimates.get(_ckey(c))
+    if not here:
+        return None
+    out = {}
+    for a in valid_actions(c, has_gpu):
+        n = apply_action(c, a)
+        if n is not None and _ckey(n) in estimates:
+            failing = fails is not None and fails.get(_ckey(n), 0.0) >= 0.5
+            out[a] = float("inf") if failing else estimates[_ckey(n)] / here
+    if fails is not None:
+        out["_fails"] = fail_groups(fails)
+    return out
+
+
+def oof_hint_provider(path, use_fails=False):
+    """Hints for training/evaluation from out-of-fold System 1 estimates (scripts/system1_oof.py)."""
+    import json
+    table = json.loads(open(path).read())
+
+    def provide(state):
+        est = table.get(f"{state['workload']['name']}:{state['workload']['size']}")
+        return hints_from_estimates(est, state, bool(state["hardware"].get("gpu_model")), use_fails) if est else None
+    return provide
+
+
+def live_hint_provider(system1, use_fails=False):
+    """Hints at run time from the live System 1 model."""
+    from .system1 import score_configs
+
+    def provide(state):
+        w = state["workload"]
+        if system1 is None or w["name"] not in system1.workloads:
+            return None
+        configs, log_rt, p_fail = score_configs(system1.members, state["hardware"], w["name"], w["size"],
+                                                system1.workloads, system1.device)
+        est = {"rt": {_ckey(c): 10 ** float(v) for c, v in zip(configs, log_rt.mean(0))},
+               "fail": {_ckey(c): float(v) for c, v in zip(configs, p_fail.mean(0))}}
+        return hints_from_estimates(est, state, bool(state["hardware"].get("gpu_model")), use_fails)
+    return provide
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +303,7 @@ class Example:
     held_out_phrasing: bool
 
 
-def build_examples(states, tables, failed, hardware, per_state=3, seed=0):
+def build_examples(states, tables, failed, hardware, per_state=3, seed=0, hints=None):
     """Examples for each state (dataset.build_states rows), answered from the measurements.
     failed: {(workload, size): {config_key: reason}} from dataset.build_tables."""
     rng = random.Random(seed)
@@ -226,7 +312,7 @@ def build_examples(states, tables, failed, hardware, per_state=3, seed=0):
     for row in states:
         inst = (row["workload"], row["size"])
         table = tables[inst]
-        text = describe(row["state"])
+        text = describe(row["state"], hints(row["state"]) if hints else None)
         fams = rng.sample(list(FAMILIES), min(per_state, len(FAMILIES)))
         for fam in fams:
             phrasings, labeller, kind = FAMILIES[fam]
@@ -325,12 +411,16 @@ class Answerer:
         self.model.temperature.fill_(extra["temperature"])
         self.model.eval()
         self.meta = extra.get("meta", {})
+        self.uses_hints = bool(extra.get("hints"))
+        self.fail_hints = bool(extra.get("fail_hints"))
 
     @torch.no_grad()
-    def ask(self, state, questions: Dict[str, dict], guard=None) -> List[Answer]:
+    def ask(self, state, questions: Dict[str, dict], guard=None, system1=None) -> List[Answer]:
         import time
         t0 = time.perf_counter()
-        text = describe(state)
+        hints = (live_hint_provider(system1, self.fail_hints)(state)
+                 if (self.uses_hints and system1 is not None) else None)
+        text = describe(state, hints)
         items, specs = [], []
         for key, q in questions.items():
             kind = q.get("type", "noul")
