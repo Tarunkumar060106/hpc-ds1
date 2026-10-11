@@ -1,0 +1,40 @@
+=== System 1 cross-validation (folds by problem size) · recipe {'width': 256, 'depth': 3, 'epochs': 600, 'lr': 0.002, 'wd': 0.001, 'bag': True, 'rank_w': 3.0, 'members': 8} ===
+  fold 0: 5/8 picks within 5% of best, 92.6% of best speed
+  fold 1: 6/8 picks within 5% of best, 95.9% of best speed
+  fold 2: 7/8 picks within 5% of best, 97.0% of best speed
+  fold 3: 6/8 picks within 5% of best, 95.1% of best speed
+  fold 4: 7/8 picks within 5% of best, 97.5% of best speed
+  fold 5: 7/8 picks within 5% of best, 98.3% of best speed
+  fold 6: 7/8 picks within 5% of best, 98.9% of best speed
+  fold 7: 8/8 picks within 5% of best, 99.1% of best speed
+  fold 8: 7/8 picks within 5% of best, 98.0% of best speed
+System 1 alone, zero runs before deciding: 83.3% of picks within 5% of best, 96.9% of best speed, 0 failing picks
+confidence (leave-one-out calibration): ECE 0.048, AUROC 0.517; at 0.85: auto 53% of problems, 0.8158 within 5%, 97.4% of best speed
+
+=== dual process on held-out test sizes (unseen by System 1 and by the step model) ===
+  fft              192: S1 {'ranks': 1, 'threads': 8, 'gpu': True, 'precision': 'fp32'} conf 0.73 -> 100% of best -> System 2; dual 100% in 1 run(s)
+  gemm            2048: S1 {'ranks': 1, 'threads': 8, 'gpu': True, 'precision': 'bf16'} conf 0.80 -> 97% of best -> System 2; dual 97% in 1 run(s)
+  mltrain         4096: S1 {'ranks': 1, 'threads': 8, 'gpu': True, 'precision': 'bf16'} conf 0.85 -> 100% of best -> System 2; dual 100% in 1 run(s)
+  montecarlo   8000000: S1 {'ranks': 8, 'threads': 4, 'gpu': False, 'precision': 'bf16'} conf 0.83 -> 95% of best -> System 2; dual 95% in 1 run(s)
+  nbody           4096: S1 {'ranks': 1, 'threads': 16, 'gpu': True, 'precision': 'bf16'} conf 0.84 -> 100% of best -> System 2; dual 100% in 1 run(s)
+  server          4000: S1 {'ranks': 8, 'threads': 1, 'gpu': False, 'precision': 'fp32'} conf 0.86 -> 100% of best; dual 100% in 1 run(s)
+  spmv          800000: S1 {'ranks': 1, 'threads': 4, 'gpu': True, 'precision': 'bf16'} conf 0.88 -> 99% of best; dual 99% in 1 run(s)
+  stencil          160: S1 {'ranks': 1, 'threads': 8, 'gpu': True, 'precision': 'bf16'} conf 0.80 -> 100% of best -> System 2; dual 100% in 1 run(s)
+  System 1 alone                              98.7% of best  1.00 real runs
+  System 1 -> System 2                        98.7% of best  1.00 real runs
+  Dual process (System 2 only when unsure)    98.7% of best  1.00 real runs
+  System 2 alone, from 1x1 CPU fp32           99.1% of best  5.12 real runs
+  Rules of thumb, from 1x1 CPU fp32           88.1% of best  3.62 real runs
+
+=== leave one workload out ===
+  gemm        77.8% within 5%   97.2% of best  0 failing picks  (guard escalates all of these)
+  fft         22.2% within 5%    1.0% of best  6 failing picks  (guard escalates all of these)
+  stencil     33.3% within 5%   69.3% of best  0 failing picks  (guard escalates all of these)
+  spmv        66.7% within 5%   94.7% of best  0 failing picks  (guard escalates all of these)
+  nbody       66.7% within 5%   90.0% of best  0 failing picks  (guard escalates all of these)
+  montecarlo   0.0% within 5%   79.5% of best  0 failing picks  (guard escalates all of these)
+  mltrain     66.7% within 5%   95.0% of best  0 failing picks  (guard escalates all of these)
+  server       0.0% within 5%    0.1% of best  9 failing picks  (guard escalates all of these)
+
+saved model/system1.pt; System 1 latency median 9.269 ms, p99 11.409 ms (CPU, all 44 configs scored)
+saved results/system1.json (411s)

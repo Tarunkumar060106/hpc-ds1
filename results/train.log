@@ -1,39 +1,41 @@
-2112 real measurements -> 1731 states over 48 problems (train 1229, val 216, test 286 on held-out sizes)
-label mix: USE_GPU 672, STOP_TUNING 373, ADD_THREADS 229, ADD_RANKS 204, USE_BF16 117, USE_FP32 89, REMOVE_RANKS 26, REMOVE_THREADS 20, USE_CPU 1
-  tiny      99,659 params  val 0.8878/0.958  test acc 0.927  (108 epochs, 20.2s)
-  small    585,995 params  val 0.8974/0.954  test acc 0.937  (82 epochs, 18.1s)
-  medium 2,847,243 params  val 0.8877/0.954  test acc 0.923  (99 epochs, 27.0s)
-selected medium on validation loss
+3168 real measurements -> 2589 states over 72 problems (train 1958, val 345, test 286 on held-out sizes)
+label mix: USE_GPU 1035, STOP_TUNING 549, ADD_THREADS 327, ADD_RANKS 293, USE_BF16 176, USE_FP32 143, REMOVE_RANKS 35, REMOVE_THREADS 30, USE_CPU 1
+  tiny      99,659 params  val 0.9465/0.922  test acc 0.944  (87 epochs, 33.0s)
+  small    585,995 params  val 0.9430/0.919  test acc 0.941  (67 epochs, 30.9s)
+  medium 2,847,243 params  val 0.9561/0.907  test acc 0.937  (79 epochs, 41.8s)
+selected small on validation loss
+validation  single: loss 0.9430 acc 0.919 ECE 0.076  |  ensemble of 5: loss 0.9320 acc 0.936 ECE 0.099
+keeping the single network (ensemble not better on validation)
 
-picks a best move 0.923 (exact label 0.661; rules 0.703, majority 'USE_GPU' 0.510)  ECE 0.319 -> 0.141 (T=0.25)
-regret: model {'mean_regret_pct': 0.94, 'worst_regret_x': 1.97, 'median_regret_pct': 0.0, 'within_5pct_of_best_pct': 96.2, 'made_slower_pct': 0.0, 'picked_failing_config_pct': 0.0}
+picks a best move 0.941 (exact label 0.668; rules 0.703, majority 'USE_GPU' 0.510)  ECE 0.367 -> 0.106 (T=0.20)
+regret: model {'mean_regret_pct': 0.23, 'worst_regret_x': 1.46, 'median_regret_pct': 0.0, 'within_5pct_of_best_pct': 97.9, 'made_slower_pct': 0.0, 'picked_failing_config_pct': 0.0}
         rules {'mean_regret_pct': 8.36, 'worst_regret_x': 6.51, 'median_regret_pct': 0.0, 'within_5pct_of_best_pct': 79.4, 'made_slower_pct': 5.6, 'picked_failing_config_pct': 7.7}
-  threshold 0.00: auto-run 100.0%  accuracy 0.9231
-  threshold 0.30: auto-run  99.7%  accuracy 0.9263
-  threshold 0.50: auto-run  93.0%  accuracy 0.9248
-  threshold 0.60: auto-run  79.0%  accuracy 0.9292
-  threshold 0.70: auto-run  68.9%  accuracy 0.9239
-  threshold 0.80: auto-run  62.9%  accuracy 0.9278
-  threshold 0.85: auto-run  58.0%  accuracy 0.9518
-  threshold 0.90: auto-run  53.8%  accuracy 0.961
-  threshold 0.95: auto-run  37.1%  accuracy 0.9717
-  threshold 0.99: auto-run  28.7%  accuracy 1.0
+  threshold 0.00: auto-run 100.0%  accuracy 0.9406
+  threshold 0.30: auto-run 100.0%  accuracy 0.9406
+  threshold 0.50: auto-run  97.9%  accuracy 0.9429
+  threshold 0.60: auto-run  89.2%  accuracy 0.9529
+  threshold 0.70: auto-run  78.3%  accuracy 0.9643
+  threshold 0.80: auto-run  65.7%  accuracy 0.9734
+  threshold 0.85: auto-run  59.4%  accuracy 0.9706
+  threshold 0.90: auto-run  53.8%  accuracy 0.9675
+  threshold 0.95: auto-run  46.2%  accuracy 0.9773
+  threshold 0.99: auto-run  24.1%  accuracy 0.9855
 saved D:\Radiants\Projects\kairo\model\hpc_ds1.pt
 
 replaying tuning sessions on measured test problems ...
-  HPC-DS1 (autonomous)                   x13.301   93.9% of best config   2.72 runs
+  HPC-DS1 (autonomous)                   x13.644   96.3% of best config   2.89 runs
   Rules of thumb                         x12.761   90.1% of best config   2.44 runs
   Random moves (8)                       x11.654   82.3% of best config   8.37 runs
   Greedy search (tries all neighbours)   x13.423   94.8% of best config  10.74 runs
 
 live tuning sessions on the hardware ...
-  live fft              192: x  9.32 in 6 runs; final config re-run 7.59 ms vs best known 7.62 ms (100.3%)
-  live gemm            2048: x4595.50 in 4 runs; final config re-run 2.35 ms vs best known 2.34 ms (99.5%)
-  live mltrain         4096: x2139.12 in 3 runs; final config re-run 2.25 ms vs best known 2.24 ms (99.9%)
-  live montecarlo   8000000: x  3.78 in 5 runs; final config re-run 222.03 ms vs best known 225.55 ms (101.6%)
-  live nbody           4096: x141.01 in 5 runs; final config re-run 3.30 ms vs best known 3.30 ms (100.2%)
-  live server          4000: x  5.03 in 4 runs; final config re-run 43.16 ms vs best known 44.87 ms (104.0%)
-  live spmv          800000: x 13.10 in 4 runs; final config re-run 8.06 ms vs best known 8.12 ms (100.8%)
-  live stencil          160: x 19.91 in 3 runs; final config re-run 4.24 ms vs best known 4.27 ms (100.7%)
+  live fft              192: x 10.51 in 6 runs; final config re-run 8.05 ms vs best known 9.19 ms (114.1%)
+  live gemm            2048: x1200.67 in 4 runs; final config re-run 3.02 ms vs best known 2.71 ms (89.6%)
+  live mltrain         4096: x3149.82 in 3 runs; final config re-run 2.35 ms vs best known 2.46 ms (104.7%)
+  live montecarlo   8000000: x  4.48 in 5 runs; final config re-run 265.20 ms vs best known 264.08 ms (99.6%)
+  live nbody           4096: x189.99 in 6 runs; final config re-run 3.31 ms vs best known 3.38 ms (102.1%)
+  live server          4000: x  4.68 in 4 runs; final config re-run 60.95 ms vs best known 60.72 ms (99.6%)
+  live spmv          800000: x 23.24 in 4 runs; final config re-run 9.70 ms vs best known 8.28 ms (85.3%)
+  live stencil          160: x 28.41 in 3 runs; final config re-run 4.42 ms vs best known 4.87 ms (110.2%)
 
-exported 23 traces -> visualizer/model_internals.json
+exported 24 traces -> visualizer/model_internals.json

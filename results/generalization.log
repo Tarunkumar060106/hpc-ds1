@@ -1,17 +1,17 @@
-=== leave one kernel out (medium model) ===
-  gemm       acc 0.599 (rules 0.795)  ECE 0.317  regret 74.8%  tuning 9.4% of best (rules 68.7%)
-  fft        acc 0.619 (rules 0.531)  ECE 0.213  regret 62.79%  tuning 68.1% of best (rules 78.1%)
-  stencil    acc 0.837 (rules 0.689)  ECE 0.165  regret 3.91%  tuning 90.7% of best (rules 61.1%)
-  spmv       acc 0.883 (rules 0.864)  ECE 0.058  regret 1.65%  tuning 98.6% of best (rules 83.4%)
-  nbody      acc 0.898 (rules 0.724)  ECE 0.090  regret 6.59%  tuning 95.0% of best (rules 92.1%)
-  montecarlo acc 0.667 (rules 0.455)  ECE 0.213  regret 5.01%  tuning 80.2% of best (rules 79.6%)
-  mltrain    acc 0.909 (rules 0.845)  ECE 0.123  regret 0.23%  tuning 93.0% of best (rules 92.2%)
-  server     acc 0.176 (rules 0.039)  ECE 0.665  regret 55.27%  tuning 52.9% of best (rules 56.9%)
+=== leave one kernel out (small model) ===
+  gemm       acc 0.712 (rules 0.783)  ECE 0.174  regret 17.65%  tuning 68.7% of best (rules 74.3%)
+  fft        acc 0.859 (rules 0.455)  ECE 0.098  regret 14.33%  tuning 86.0% of best (rules 73.1%)
+  stencil    acc 0.843 (rules 0.707)  ECE 0.135  regret 2.94%  tuning 91.4% of best (rules 62.9%)
+  spmv       acc 0.852 (rules 0.897)  ECE 0.057  regret 11.8%  tuning 95.9% of best (rules 88.2%)
+  nbody      acc 0.752 (rules 0.730)  ECE 0.115  regret 55.7%  tuning 95.2% of best (rules 91.1%)
+  montecarlo acc 0.745 (rules 0.467)  ECE 0.097  regret 3.0%  tuning 85.7% of best (rules 82.0%)
+  mltrain    acc 0.859 (rules 0.828)  ECE 0.086  regret 10.96%  tuning 83.9% of best (rules 92.3%)
+  server     acc 0.275 (rules 0.026)  ECE 0.526  regret 38.77%  tuning 58.2% of best (rules 57.3%)
 
 === input ablations (held-out sizes) ===
-  full model           acc 0.923  regret 0.94%  ECE 0.141
-  no telemetry         acc 0.937  regret 0.49%  ECE 0.116
-  no current config    acc 0.913  regret 0.25%  ECE 0.097
-  no kernel identity   acc 0.902  regret 1.36%  ECE 0.152
+  full model           acc 0.941  regret 0.23%  ECE 0.106
+  no telemetry         acc 0.955  regret 0.44%  ECE 0.114
+  no current config    acc 0.923  regret 0.48%  ECE 0.089
+  no kernel identity   acc 0.941  regret 1.29%  ECE 0.091
 
 saved results/generalization.json
