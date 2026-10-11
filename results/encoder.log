@@ -1,0 +1,27 @@
+9103 questions from 2589 measured states: train 5707, val 634, unseen wording 1752, test sizes 1010
+families: fails 358, near_best 1407, precision 1506, action_helps 1473, device 1459, next_move 1493, compare 1407
+Loading weights:   0%|          | 0/134 [00:00<?, ?it/s]Loading weights:   3%|2         | 4/134 [00:00<00:05, 23.26it/s]Loading weights: 100%|##########| 134/134 [00:00<00:00, 502.77it/s]
+[transformers] [1mModernBertModel LOAD REPORT[0m from: answerdotai/ModernBERT-base
+Key               | Status     |  | 
+------------------+------------+--+-
+head.norm.weight  | UNEXPECTED |  | 
+decoder.bias      | UNEXPECTED |  | 
+head.dense.weight | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+[transformers] The new embeddings will be initialized from a multivariate normal distribution that has old embeddings' mean and covariance. As described in this article: https://nlp.stanford.edu/~johnhew/vocab-expansion.html. To disable this, use `mean_resizing=False`
+  epoch 1 step 100/712 loss 0.454 (25s)
+  epoch 1 step 200/712 loss 0.621 (50s)
+  epoch 1 step 300/712 loss 0.435 (75s)
+  epoch 2 step 400/712 loss 0.660 (100s)
+  epoch 2 step 500/712 loss 0.689 (126s)
+  epoch 2 step 600/712 loss 0.267 (152s)
+  epoch 2 step 700/712 loss 0.486 (178s)
+validation (seen wording)              accuracy  84.7%  (most-common baseline  56.9%)  ECE 0.029  n=634
+unseen wording, seen problems          accuracy  82.5%  (most-common baseline  60.0%)  ECE 0.018  n=1752
+unseen problems (test sizes)           accuracy  81.0%  (most-common baseline  56.5%)  ECE 0.038  n=794
+unseen problems AND unseen wording     accuracy  79.6%  (most-common baseline  58.3%)  ECE 0.066  n=216
+latency 26.89 ms per question on cuda
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|##########| 1/1 [00:00<00:00,  2.41it/s]Writing model shards: 100%|##########| 1/1 [00:00<00:00,  2.40it/s]
+saved D:\Radiants\Projects\kairo\models\encoder and results/encoder.json

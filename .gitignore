@@ -17,3 +17,9 @@ archive/**/*.pt
 archive/simulator_era/data/
 
 # Per-machine state written by `hpc-ds1 setup` / `serve` lives in ~/.hpc_ds1, not here
+
+# Downloaded pretrained encoder weights (Hugging Face cache)
+models/hf/
+
+# Fine-tuned encoder weights (large; rebuild with scripts/train_encoder.py)
+models/encoder/
