@@ -16,7 +16,7 @@ About 10–12 minutes. Everything runs on this laptop; nothing is simulated.
    ```
    hpc-ds1 agent --server http://127.0.0.1:8765 --token <TOKEN> --name laptop
    ```
-5. Open **http://localhost:8765** and press **Ctrl+F5**. Check the sidebar: "trained on LAPTOP-PJUEH9UD · guard on", coordinator dot green. On the Fleet page, `laptop` should be **online** with 8 measured kernels.
+5. Open **http://localhost:8765** and press **Ctrl+F5**. Check the sidebar: "trained on <this machine> · guard on", coordinator dot green. On the Fleet page, `laptop` should be **online** with 8 measured kernels.
 6. Type your name into the box at the top of the **Approvals** page.
 
 If the page looks stale or wrong: another server may be on port 8765. Check with `netstat -ano | findstr 8765`.
@@ -35,7 +35,7 @@ If the page looks stale or wrong: another server may be on port 8765. Check with
 - Submit **3D Jacobi stencil, 160, 1 rank, 1 thread**. The task row shows where it was placed and why ("earliest expected finish: queue + run"), then *running*, then *done*: about 20–35× faster in about 6 real runs, ending on GPU · bf16 with "model stop".
 - Submit **Neural network training step, 4096, 1×1** (AI training): expect GPU, thousands of times faster in about 3 runs.
 - Submit **Backend request handling, 4000, 1×1** (server): it adds worker processes, never uses the GPU (there's no GPU version); about 5× faster.
-- If a second machine is available: on it, run `hpc-ds1 agent --server http://<this-laptop-ip>:8765 --token <TOKEN>` (Wi-Fi IP was 10.9.144.199; check with `ipconfig`). Submit again and show both devices' estimates on the task.
+- If a second machine is available: on it, run `hpc-ds1 agent --server http://<this-laptop-ip>:8765 --token <TOKEN>` (find it with `ipconfig` or `ip addr`). Submit again and show both devices' estimates on the task.
 
 ### 4. Approvals + audit: "a human stays in charge" (~2 min)
 - Submit **Monte Carlo option pricing, 8,000,000, 1×1**. When the **Approvals** badge lights up, open it: the move, its confidence, the tier (*confirm*), and why. **Approve** it.

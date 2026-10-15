@@ -85,19 +85,31 @@ Strong on "CPU or GPU?" and "fp32 or bf16?" (100%), "which of these two setups i
 
 ## Quick start
 
+Python 3.10+. For GPU moves, first install the CUDA build of PyTorch for your driver from pytorch.org; CPU-only works too (GPU moves are then unavailable).
+
 ```bash
-pip install -r requirements.txt     # install the CUDA build of torch for your driver
+git clone https://github.com/Tarunkumar060106/hpc-ds1.git
+cd hpc-ds1
+pip install -e ".[test]"            # add ",encoder" for free-text questions
 python -m pytest tests -q
-python -m hpc_ds1 serve             # API + layer explorer at http://127.0.0.1:8765
+hpc-ds1 serve                       # console at http://127.0.0.1:8765
 ```
 
 ```bash
-python -m hpc_ds1 decide --workload gemm --size 2048 --ranks 2 --threads 4
-python -m hpc_ds1 tune   --workload stencil --size 160       # asks before running uncertain moves
-python -m hpc_ds1 info
+hpc-ds1 predict --workload mltrain --size 4096                # System 1: instant, nothing is run
+hpc-ds1 plan    --workload stencil --size 160                 # System 1, then System 2 only if needed
+hpc-ds1 decide  --workload gemm --size 2048 --ranks 2 --threads 4
+hpc-ds1 tune    --workload stencil --size 160                 # asks before running uncertain moves
+hpc-ds1 tasks                                                 # what the model knows
 ```
 
-HTTP: `POST /v1/decide`, `/v1/trace` (every layer's activations), `/v1/tune`, `/v1/decide_batch`; `GET /v1/health`, `/v1/schema`, `/v1/catalog`. Without `telemetry` in the request, the server runs the job once to measure it.
+**Your own machine.** The shipped models were trained on one laptop (i5 + RTX 4050); on other hardware the familiarity guard escalates every move until you run `hpc-ds1 setup` (about 1 hour, or `--quick` for about 30 minutes), which measures your machine and trains on it.
+
+**Free-text questions.** `pip install -e ".[encoder]"`, then download `hpc-ds1-encoder-v1.0.0.zip` from the [v1.0.0 release](https://github.com/Tarunkumar060106/hpc-ds1/releases/tag/v1.0.0) and unzip it so that `models/encoder/scorer.pt` exists (or rebuild it with `scripts/train_encoder.py`).
+
+HTTP: `POST /v1/decide`, `/v1/predict`, `/v1/ask`, `/v1/trace`, `/v1/tune`, `/v1/sessions`, `/v1/fleet/...`; `GET /v1/health`, `/v1/schema`, `/v1/queue`, `/v1/audit`. Without `telemetry` in a request, the server runs the job once to measure it.
+
+> **Security:** `hpc-ds1 serve` has no HTTPS and no console login in v1. Run it on a trusted network or inside a private overlay network such as Tailscale or ZeroTier; do not expose it to the public internet.
 
 ## How it works
 
@@ -150,7 +162,10 @@ python scripts/generalization.py   # leave-one-kernel-out + input ablations
 
 ## Limitations
 
-- **One machine.** The model has only seen this laptop. The hardware features are constant in the training data, so it can't transfer to other hardware without collecting there.
+- **One machine.** The model has only seen this laptop. The hardware features are constant in the training data, so it can't transfer to other hardware without collecting there (`hpc-ds1 setup`, which has so far only been tested on copies of this laptop's data).
+- **Fleet = many independent tasks.** The fleet places whole tasks on machines (a high-throughput cluster); it does not yet split one job across machines.
+- **No HTTPS or console login** in v1 (see Quick start).
+- **Question encoder:** about 87% on unseen wording and problems, but it can be confidently wrong on "will this one change make it faster?"; use System 1 and System 2 for actual decisions.
 - **Ranks are processes, not MPI.** The communication pattern (shard, compute, gather to rank 0) is real, but it runs over pipes on one machine, not over a network.
 - **Generalizing to new kinds of work is partial** (see results), and calibration degrades on them. That's exactly where escalating to an engineer matters most.
 - **Evaluation replays real measurements** for the hundreds of tuning sessions, because running them all live would take hours. The live sessions show the same behaviour.
@@ -159,13 +174,14 @@ python scripts/generalization.py   # leave-one-kernel-out + input ablations
 ## Layout
 
 ```
-hpc_ds1/      kernels, runner, space, features, net, dataset, tuner, api, server, CLI
-scripts/      collect.py, train.py, generalization.py
-data/real/    measurements.jsonl, hardware.json
-model/        hpc_ds1.pt
-results/      metrics.json, generalization.json, logs
-visualizer/   layer explorer (index.html + model_internals.json)
+hpc_ds1/      workloads, runner, model, System 1, encoder, guard, tuner, API, server, fleet, CLI
+scripts/      collect, train, generalization, fit_guard, train_system1, tune_system1, train_encoder, ...
+data/real/    measurements.jsonl (3,168 real runs), hardware.json
+model/        hpc_ds1.pt (step model + guard), system1.pt
+results/      metrics, generalization, guard, system1, encoder; experiments/ (every variant tried)
+visualizer/   console.html (facility console), index.html (layer explorer)
+examples/     plugins/etl_batch.py (bring your own task)
 tests/        test_project.py
-docs/         DEMO.md (live demo script), research/ (Jev/Laya research, PRD)
-archive/      the earlier simulator-based version, kept for history only
+docs/         DEMO.md, architecture/ (diagram)
+archive/      the earlier simulator-based prototype (code only), kept for history
 ```
