@@ -49,8 +49,7 @@ from .kernels import KERNELS
 from .space import ACTION_HELP, ACTIONS, apply_action, config_key, in_space, make_config, valid_actions
 from .tuner import build_state
 
-VISUALIZER_DIR = Path(__file__).resolve().parent.parent / "visualizer"
-RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
+from .paths import RESULTS_DIR, UI_DIR as VISUALIZER_DIR, encoder_dir  # noqa: E402
 STATIC = {"/": ("console.html", "text/html; charset=utf-8"),
           "/console": ("console.html", "text/html; charset=utf-8"),
           "/playground": ("console.html", "text/html; charset=utf-8"),
@@ -81,9 +80,10 @@ class App:
 
     def answerer(self):
         if self._answerer is None:
-            path = Path(__file__).resolve().parent.parent / "models" / "encoder"
+            path = encoder_dir()
             if not (path / "scorer.pt").exists():
-                raise FileNotFoundError("no question encoder yet; train it with scripts/train_encoder.py")
+                raise FileNotFoundError("no question encoder: download hpc-ds1-encoder-*.zip from the GitHub release "
+                                        "and unzip it into ~/.hpc_ds1 (or set HPC_DS1_ENCODER)")
             from .encoder import Answerer
             self._answerer = Answerer(path)
         return self._answerer

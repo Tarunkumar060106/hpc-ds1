@@ -154,7 +154,8 @@ def main():
     tok.save_pretrained(OUT)
     torch.save({"score": model.score.state_dict(), "temperature": temp, "hints": HINTS, "fail_hints": FAIL_HINTS,
                 "meta": {k: v for k, v in res.items() if not isinstance(v, dict)}}, OUT / "scorer.pt")
-    (PROJECT_ROOT / "results" / "encoder.json").write_text(json.dumps(res, indent=2))
+    from hpc_ds1.paths import RESULTS_DIR
+    (RESULTS_DIR / "encoder.json").write_text(json.dumps(res, indent=2))
     log(f"saved {OUT} and results/encoder.json")
 
 

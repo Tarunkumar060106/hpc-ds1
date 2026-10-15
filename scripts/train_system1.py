@@ -13,8 +13,8 @@ Train and evaluate System 1 (hpc_ds1/system1.py) on the real measurements.
                     vs System 2 alone vs rules of thumb, replayed on the
                     measured runtimes
   unseen workload   leave-one-workload-out: does System 1 know a job it never saw?
-  outputs           model/system1.pt (trained on every measured problem),
-                    results/system1.json, the visualizer export
+  outputs           hpc_ds1/models/system1.pt (trained on every measured problem),
+                    hpc_ds1/results/system1.json, the console export
 
     python scripts/train_system1.py
 """
@@ -213,16 +213,17 @@ def main(hp=None):
     members = train_ensemble(x, y, f, g, device, hp)
     s1m = System1([m.cpu() for m in members], WORKLOAD_NAMES, cal, size_ranges(rows), _hw(hardware),
                   hardware.get("name"), train_sizes=train_sizes_of(rows), hp=hp)
-    torch.save(s1m.to_checkpoint(), PROJECT_ROOT / "model" / "system1.pt")
+    from hpc_ds1.paths import MODELS_DIR, RESULTS_DIR, UI_DIR
+    torch.save(s1m.to_checkpoint(), MODELS_DIR / "system1.pt")
     lat = []
     for w in WORKLOAD_NAMES:
         for _ in range(20):
             lat.append(s1m.predict(hardware, w, KERNELS[w].test_size).latency_ms)
     results["latency_ms"] = {"median": round(float(np.median(lat)), 3), "p99": round(float(np.percentile(lat, 99)), 3)}
-    log(f"\nsaved model/system1.pt; System 1 latency median {results['latency_ms']['median']} ms, "
+    log(f"\nsaved hpc_ds1/models/system1.pt; System 1 latency median {results['latency_ms']['median']} ms, "
         f"p99 {results['latency_ms']['p99']} ms (CPU, all 44 configs scored)")
-    (PROJECT_ROOT / "results" / "system1.json").write_text(json.dumps(results, indent=2))
-    viz = PROJECT_ROOT / "visualizer" / "model_internals.json"
+    (RESULTS_DIR / "system1.json").write_text(json.dumps(results, indent=2))
+    viz = UI_DIR / "model_internals.json"
     export = json.loads(viz.read_text())
     export["system1"] = results
     viz.write_text(json.dumps(export))

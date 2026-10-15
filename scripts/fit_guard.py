@@ -3,7 +3,7 @@
 
 The network's weights are not touched: the guard is fitted on the same
 train/validation split scripts/train.py used and stored next to them in
-model/hpc_ds1.pt. Then, on real measurements:
+hpc_ds1/models/hpc_ds1.pt. Then, on real measurements:
 
   held-out sizes   how many familiar test decisions the guard escalates, and
                    what it does to auto-run share and accuracy (three tiers)
@@ -34,7 +34,8 @@ from hpc_ds1.guard import FamiliarityGuard  # noqa: E402
 from hpc_ds1.kernels import WORKLOAD_NAMES  # noqa: E402
 from hpc_ds1.training import fit_guard, is_good, split  # noqa: E402
 
-CKPT = PROJECT_ROOT / "model" / "hpc_ds1.pt"
+from hpc_ds1.paths import MODELS_DIR, RESULTS_DIR, UI_DIR  # noqa: E402
+CKPT = MODELS_DIR / "hpc_ds1.pt"
 
 
 def tiers(model, rows, guarded):
@@ -74,7 +75,7 @@ def main():
         print(f"  {k:14s} auto {t['auto']:.1%} confirm {t['confirm']:.1%} escalate {t['escalate']:.1%}  "
               f"auto accuracy {t['auto_accuracy']}  wrong auto-runs {t['wrong_auto_runs']}")
 
-    gen_path = PROJECT_ROOT / "results" / "generalization.json"
+    gen_path = RESULTS_DIR / "generalization.json"
     gen = {r["held_out"]: r for r in json.loads(gen_path.read_text())["leave_one_kernel_out"]} if gen_path.exists() else {}
     unseen = []
     for w in WORKLOAD_NAMES:
@@ -97,8 +98,8 @@ def main():
                  if "confident_wrong_before" in r else ""))
 
     results = {"radius": guard.radius, "quantile": 0.99, "held_out_sizes": held_out, "unseen_kernels": unseen}
-    (PROJECT_ROOT / "results" / "guard.json").write_text(json.dumps(results, indent=2))
-    viz = PROJECT_ROOT / "visualizer" / "model_internals.json"
+    (RESULTS_DIR / "guard.json").write_text(json.dumps(results, indent=2))
+    viz = UI_DIR / "model_internals.json"
     export = json.loads(viz.read_text())
     export["guard"] = results
     viz.write_text(json.dumps(export))

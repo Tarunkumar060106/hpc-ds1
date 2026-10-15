@@ -88,11 +88,17 @@ Strong on "CPU or GPU?" and "fp32 or bf16?" (100%), "which of these two setups i
 Python 3.10+. For GPU moves, first install the CUDA build of PyTorch for your driver from pytorch.org; CPU-only works too (GPU moves are then unavailable).
 
 ```bash
+pip install hpc-ds1                 # or: pip install "hpc-ds1[encoder]" for free-text questions
+hpc-ds1 serve                       # console at http://127.0.0.1:8765
+```
+
+From source (to retrain or run the tests):
+
+```bash
 git clone https://github.com/Tarunkumar060106/hpc-ds1.git
 cd hpc-ds1
-pip install -e ".[test]"            # add ",encoder" for free-text questions
+pip install -e ".[test]"
 python -m pytest tests -q
-hpc-ds1 serve                       # console at http://127.0.0.1:8765
 ```
 
 ```bash
@@ -105,7 +111,7 @@ hpc-ds1 tasks                                                 # what the model k
 
 **Your own machine.** The shipped models were trained on one laptop (i5 + RTX 4050); on other hardware the familiarity guard escalates every move until you run `hpc-ds1 setup` (about 1 hour, or `--quick` for about 30 minutes), which measures your machine and trains on it.
 
-**Free-text questions.** `pip install -e ".[encoder]"`, then download `hpc-ds1-encoder-v1.0.0.zip` from the [v1.0.0 release](https://github.com/Tarunkumar060106/hpc-ds1/releases/tag/v1.0.0) and unzip it so that `models/encoder/scorer.pt` exists (or rebuild it with `scripts/train_encoder.py`).
+**Free-text questions.** Install with the `encoder` extra, then download `hpc-ds1-encoder-v1.0.0.zip` from the [v1.0.0 release](https://github.com/Tarunkumar060106/hpc-ds1/releases/tag/v1.0.0) (about 600 MB, too big for PyPI) and unzip it into `~/.hpc_ds1` so that `~/.hpc_ds1/models/encoder/scorer.pt` exists. In a source checkout, `models/encoder/` also works, or set `HPC_DS1_ENCODER`.
 
 HTTP: `POST /v1/decide`, `/v1/predict`, `/v1/ask`, `/v1/trace`, `/v1/tune`, `/v1/sessions`, `/v1/fleet/...`; `GET /v1/health`, `/v1/schema`, `/v1/queue`, `/v1/audit`. Without `telemetry` in a request, the server runs the job once to measure it.
 
@@ -138,7 +144,7 @@ HTTP: `POST /v1/decide`, `/v1/predict`, `/v1/ask`, `/v1/trace`, `/v1/tune`, `/v1
 - Each correct config becomes a state. Its label is the first move of the best chain of measured, clearly faster (>5% and above noise) moves.
 - Several moves are often equally good, so training uses soft targets that share credit among moves reaching within about 2% of the best.
 
-**Model** (`hpc_ds1/net.py`, 2.8M parameters, size chosen on validation loss).
+**Model** (`hpc_ds1/net.py`, 0.59M parameters: the "small" size, chosen on validation loss among 0.1M, 0.59M and 2.85M).
 - **Encoders:** four modular encoders (hardware, workload, config, telemetry), each with pre-norm residual blocks.
 - **Fusion:** attention over the four tokens.
 - **Heads:** action, stop, and expected-improvement heads; invalid actions are masked.
@@ -176,10 +182,11 @@ python scripts/generalization.py   # leave-one-kernel-out + input ablations
 ```
 hpc_ds1/      workloads, runner, model, System 1, encoder, guard, tuner, API, server, fleet, CLI
 scripts/      collect, train, generalization, fit_guard, train_system1, tune_system1, train_encoder, ...
-data/real/    measurements.jsonl (3,168 real runs), hardware.json
-model/        hpc_ds1.pt (step model + guard), system1.pt
-results/      metrics, generalization, guard, system1, encoder; experiments/ (every variant tried)
-visualizer/   console.html (facility console), index.html (layer explorer)
+hpc_ds1/ui/          console.html (facility console), index.html (layer explorer)
+hpc_ds1/models/      hpc_ds1.pt (step model + guard), system1.pt
+hpc_ds1/data/real/   measurements.jsonl (3,168 real runs), hardware.json
+hpc_ds1/results/     metrics, generalization, guard, system1, encoder (shown on the Evaluation page)
+results/             training logs, out-of-fold estimates, experiments/ (every variant tried)
 examples/     plugins/etl_batch.py (bring your own task)
 tests/        test_project.py
 docs/         DEMO.md, architecture/ (diagram)

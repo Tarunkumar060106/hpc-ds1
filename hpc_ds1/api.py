@@ -56,7 +56,8 @@ def default_checkpoint():
     own = home_dir() / "model" / "hpc_ds1.pt"
     if own.exists():
         return own
-    return Path(__file__).resolve().parent.parent / "model" / "hpc_ds1.pt"
+    from .paths import MODELS_DIR
+    return MODELS_DIR / "hpc_ds1.pt"
 
 
 def decision_mode(confidence, familiar, threshold, escalate_below):
@@ -233,7 +234,7 @@ class HPCDS1:
                 escalate_below=DEFAULT_ESCALATE_BELOW):
         """System 1: the full configuration from the job description alone. Nothing is run."""
         if self.system1 is None:
-            raise FileNotFoundError("no System 1 model (model/system1.pt); train it with scripts/train_system1.py")
+            raise FileNotFoundError("no System 1 model (hpc_ds1/models/system1.pt); train it with scripts/train_system1.py")
         return self.system1.predict(hardware or self.engine.hardware, workload, int(size), threshold, escalate_below)
 
     def plan(self, workload, size, threshold=DEFAULT_THRESHOLD, escalate_below=DEFAULT_ESCALATE_BELOW,

@@ -12,7 +12,7 @@ Train and evaluate HPC-DS1 on real measurements from this machine.
             tuning sessions replayed over the measured test problems from
             every starting config; and live sessions that run every
             suggested config on the hardware right now
-  outputs:  model/hpc_ds1.pt, results/metrics.json, visualizer/model_internals.json
+  outputs:  hpc_ds1/models/hpc_ds1.pt, hpc_ds1/results/metrics.json, hpc_ds1/ui/model_internals.json
 
     python scripts/train.py            # train + evaluate + live check
     python scripts/train.py --no-live  # skip the live hardware sessions
@@ -267,7 +267,8 @@ def main():
     for e in esc:
         log(f"  threshold {e['threshold']:.2f}: auto-run {100 * e['coverage']:5.1f}%  accuracy {e['auto_accuracy']}")
 
-    ckpt = PROJECT_ROOT / "model" / "hpc_ds1.pt"
+    from hpc_ds1.paths import MODELS_DIR, RESULTS_DIR, UI_DIR
+    ckpt = MODELS_DIR / "hpc_ds1.pt"
     meta = {"size": chosen["size"], "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "trained_on": hardware["name"],
             "test_metrics": {k: metrics[k] for k in ("accuracy", "ece", "temperature")}}
@@ -329,11 +330,11 @@ def main():
         "training_curve": chosen["history"], "metrics": metrics, "replay": loop, "live": live,
         "landscapes": landscapes, "traces": traces,
     }
-    (PROJECT_ROOT / "results").mkdir(exist_ok=True)
-    (PROJECT_ROOT / "results" / "metrics.json").write_text(json.dumps(
+    RESULTS_DIR.mkdir(exist_ok=True)
+    (RESULTS_DIR / "metrics.json").write_text(json.dumps(
         {k: export[k] for k in ("model", "hardware", "dataset", "size_sweep", "metrics", "replay", "live")}, indent=2))
-    (PROJECT_ROOT / "visualizer" / "model_internals.json").write_text(json.dumps(export))
-    log(f"\nexported {len(traces)} traces -> visualizer/model_internals.json")
+    (UI_DIR / "model_internals.json").write_text(json.dumps(export))
+    log(f"\nexported {len(traces)} traces -> hpc_ds1/ui/model_internals.json")
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ from pathlib import Path
 from .space import ACTIONS, STOP, apply_action, config_key, make_config, valid_actions
 from .tuner import build_state
 
-REPO_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "real"
+from .paths import DATA_DIR as REPO_DATA_DIR  # measurements shipped with the package
 
 
 def data_dir():

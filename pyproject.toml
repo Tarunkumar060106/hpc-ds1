@@ -1,13 +1,27 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "hpc-ds1"
-version = "1.0.0"
+version = "1.0.1"
 description = "Confidence-aware decision model that tunes HPC jobs on the machine it runs on"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Tarunkumar Sivakumar"}]
+keywords = ["hpc", "autotuning", "performance", "gpu", "scheduling", "decision-model", "pytorch"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: System Administrators",
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: System :: Distributed Computing",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 # Install the CUDA build of torch for your driver first if you want GPU actions
 # (https://pytorch.org/get-started/locally/); CPU-only works, GPU moves are just unavailable.
 dependencies = ["torch>=2.4", "numpy>=1.26", "psutil>=5.9"]
@@ -23,4 +37,11 @@ Homepage = "https://github.com/Tarunkumar060106/hpc-ds1"
 hpc-ds1 = "hpc_ds1.__main__:main"
 
 [tool.setuptools]
-packages = ["hpc_ds1"]
+# the data folders ship inside the package so `pip install hpc-ds1` has the console, models and data
+packages = ["hpc_ds1", "hpc_ds1.ui", "hpc_ds1.models", "hpc_ds1.data", "hpc_ds1.data.real", "hpc_ds1.results"]
+
+[tool.setuptools.package-data]
+"hpc_ds1.ui" = ["*.html", "*.json"]
+"hpc_ds1.models" = ["*.pt"]
+"hpc_ds1.data.real" = ["*.json", "*.jsonl"]
+"hpc_ds1.results" = ["*.json"]

@@ -1,0 +1,70 @@
+# Publish to PyPI when a GitHub release is published, using PyPI Trusted Publishing
+# (no passwords or API tokens are stored anywhere). One-time setup on pypi.org:
+#   Your account -> Publishing -> Add a new pending publisher
+#     PyPI project name: hpc-ds1   Owner: Tarunkumar060106   Repository: hpc-ds1
+#     Workflow name: publish.yml   Environment: pypi
+# Running it by hand ("Run workflow") publishes to TestPyPI instead, for a dry run
+# (needs the same pending publisher on test.pypi.org with environment: testpypi).
+
+name: publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade build twine
+      - run: python -m build
+      - run: python -m twine check dist/*
+      - name: Package must contain the console, models and data
+        run: |
+          python - <<'EOF'
+          import glob, zipfile
+          names = zipfile.ZipFile(glob.glob("dist/*.whl")[0]).namelist()
+          for need in ("hpc_ds1/ui/console.html", "hpc_ds1/models/hpc_ds1.pt", "hpc_ds1/models/system1.pt",
+                       "hpc_ds1/data/real/measurements.jsonl", "hpc_ds1/results/metrics.json"):
+              assert need in names, f"missing from wheel: {need}"
+          print("wheel contents ok")
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  pypi:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/

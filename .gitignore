@@ -25,3 +25,6 @@ models/hf/
 models/encoder/
 models/encoder_nohints/
 models/encoder_hints/
+
+# Large release downloads (attached to GitHub releases, not committed)
+release-assets/

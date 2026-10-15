@@ -79,7 +79,7 @@ def test_label_uses_measured_runtimes_and_noise_floor():
     assert label(base, table)[0] == STOP  # 3% faster is inside the 5% noise floor
 
 
-@pytest.mark.skipif(not (ROOT / "model" / "hpc_ds1.pt").exists(), reason="train the model first")
+@pytest.mark.skipif(not (ROOT / "hpc_ds1" / "models" / "hpc_ds1.pt").exists(), reason="train the model first")
 def test_api_decides_on_real_states():
     import hpc_ds1
     from hpc_ds1.dataset import build_tables, load_hardware, load_measurements

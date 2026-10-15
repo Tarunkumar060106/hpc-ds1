@@ -27,7 +27,8 @@ from hpc_ds1.kernels import KERNELS  # noqa: E402
 from hpc_ds1.runner import Engine  # noqa: E402
 
 import os
-OUT_DIR = Path(os.environ.get("KAIRO_DATA_DIR", PROJECT_ROOT / "data" / "real"))
+from hpc_ds1.paths import DATA_DIR  # noqa: E402
+OUT_DIR = Path(os.environ.get("KAIRO_DATA_DIR", DATA_DIR))
 MEAS = OUT_DIR / "measurements.jsonl"
 RETEST = OUT_DIR / "retest.jsonl"
 

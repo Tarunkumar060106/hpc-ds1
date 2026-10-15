@@ -88,7 +88,8 @@ def replay(model, tables, hardware, insts):
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    metrics = json.loads((PROJECT_ROOT / "results" / "metrics.json").read_text())
+    from hpc_ds1.paths import RESULTS_DIR, UI_DIR
+    metrics = json.loads((RESULTS_DIR / "metrics.json").read_text())
     size = metrics["model"]["size"]
     hardware = load_hardware()
     tables, _ = build_tables(load_measurements())
@@ -125,8 +126,8 @@ def main():
         out.append(r)
     results["ablations"] = out
 
-    (PROJECT_ROOT / "results" / "generalization.json").write_text(json.dumps(results, indent=2))
-    viz = PROJECT_ROOT / "visualizer" / "model_internals.json"
+    (RESULTS_DIR / "generalization.json").write_text(json.dumps(results, indent=2))
+    viz = UI_DIR / "model_internals.json"
     export = json.loads(viz.read_text())
     export["generalization"] = results
     viz.write_text(json.dumps(export))
