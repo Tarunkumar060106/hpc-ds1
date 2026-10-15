@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Grounded change questions:** yes/no questions about the effect of one change ("would the graphics card make this faster?") are now answered from System 1's estimate for that change, found with a transparent lexicon, instead of by the encoder. On held-out questions: 83.8% vs 68.1% (unseen wording), 82.8% vs 76.6% (unseen sizes), 85.2% vs 77.8% (both). Answers report their `source`. Caveat: the lexicon was written knowing the held-out synonyms, so its coverage still needs a blind test with human-written questions (`scripts/eval_router.py`).
+- Fixed: the v1.0.0 notes said the step model has 2.85M parameters; the model chosen on validation has 0.59M.
+
 ## v1.0.1 — installable from PyPI
 
 - `pip install hpc-ds1` now gives a complete install: the console, the trained models, the measurements and the evaluation results ship inside the package (`hpc_ds1/ui`, `models`, `data`, `results`; one place for all paths in `hpc_ds1/paths.py`).

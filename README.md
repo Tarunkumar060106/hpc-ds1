@@ -81,7 +81,7 @@ Every training question is answered from the real measurements (e.g. "will bf16 
 | Unseen problem sizes | **87.4%** (83.4%) | 55.8% | 0.016 |
 | Unseen wording and unseen problems | **87.2%** (82.8%) | 63.0% | 0.045 |
 
-Strong on "CPU or GPU?" and "fp32 or bf16?" (100%), "which of these two setups is faster?" and "is this near the best?" (85–92%); "will this one change make it faster?" improved from about 60% to 68–78% with the hints. Weak: "will this setup crash?" (50–78%). Adding System 1's failure predictions to the text was tried and was worse on validation, so it is off (`results/experiments/`). The familiarity guard marks answers about unfamiliar jobs. Weights are not in git: `HF_HOME=models/hf python scripts/train_encoder.py` (downloads ModernBERT-base, about 600 MB, then about 8 minutes on an RTX 4050).
+Yes/no questions about the effect of one change ("would the graphics card make this faster?") are answered from System 1's estimate for that change, found with a transparent lexicon: 83–85% on held-out questions versus 68–78% for the encoder (`scripts/eval_router.py`); every answer reports its `source`. Strong on "CPU or GPU?" and "fp32 or bf16?" (100%), "which of these two setups is faster?" and "is this near the best?" (85–92%); "will this one change make it faster?" improved from about 60% to 68–78% with the hints. Weak: "will this setup crash?" (50–78%). Adding System 1's failure predictions to the text was tried and was worse on validation, so it is off (`results/experiments/`). The familiarity guard marks answers about unfamiliar jobs. Weights are not in git: `HF_HOME=models/hf python scripts/train_encoder.py` (downloads ModernBERT-base, about 600 MB, then about 8 minutes on an RTX 4050).
 
 ## Quick start
 

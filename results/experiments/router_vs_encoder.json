@@ -1,0 +1,45 @@
+{
+  "confidence_table_train": [
+    [
+      0.05,
+      0.675,
+      166
+    ],
+    [
+      0.2,
+      0.531,
+      245
+    ],
+    [
+      Infinity,
+      0.938,
+      630
+    ]
+  ],
+  "splits": {
+    "unseen wording": {
+      "questions": 210,
+      "router_coverage": 1.0,
+      "router_accuracy_where_used": 0.838,
+      "encoder_accuracy_same_questions": 0.681,
+      "encoder_alone": 0.681,
+      "router_then_encoder": 0.838
+    },
+    "test sizes": {
+      "questions": 128,
+      "router_coverage": 1.0,
+      "router_accuracy_where_used": 0.828,
+      "encoder_accuracy_same_questions": 0.766,
+      "encoder_alone": 0.766,
+      "router_then_encoder": 0.828
+    },
+    "test sizes + unseen wording": {
+      "questions": 27,
+      "router_coverage": 1.0,
+      "router_accuracy_where_used": 0.852,
+      "encoder_accuracy_same_questions": 0.778,
+      "encoder_alone": 0.778,
+      "router_then_encoder": 0.852
+    }
+  }
+}

@@ -384,6 +384,70 @@ def encode(tok, items, max_len=320, device="cpu"):
             "marker_pos": pos.to(device), "marker_mask": (pos >= 0).to(device)}
 
 
+# ---------------------------------------------------------------------------
+# Grounding "will this change help?" in System 1's estimate
+# ---------------------------------------------------------------------------
+# The encoder reads System 1's per-change estimates, but it can misread which
+# change a question is about (e.g. "graphics card" when it was trained on "GPU").
+# For yes/no questions about the effect of one change, a transparent lexicon
+# finds the change and the answer comes straight from System 1's estimate.
+# Everything else goes to the encoder. Evaluated in scripts/eval_router.py.
+
+import re as _re
+
+_MORE = r"(?:more|double|doubling|add|adding|increase|increasing|extra|twice as many)"
+_LESS = r"(?:fewer|less|halve|halving|remove|removing|reduce|reducing|cut|cutting|drop|dropping)"
+CHANGE_LEXICON = {
+    "USE_GPU": [r"\bgpu\b", r"graphics card", r"\bcuda\b", r"accelerator", r"graphics processor"],
+    "USE_CPU": [r"back (?:to|on) the (?:cpu|processor)", r"(?:on|to) the cpu instead", r"off the (?:gpu|graphics card)"],
+    "USE_BF16": [r"\bbf16\b", r"bfloat16", r"half precision", r"16-bit", r"lower precision"],
+    "USE_FP32": [r"\bfp32\b", r"float32", r"single precision", r"32-bit", r"full precision"],
+    "ADD_RANKS": [_MORE + r"[\w\s]{0,20}?\b(?:ranks?|processes|process|workers?)\b"],
+    "REMOVE_RANKS": [_LESS + r"[\w\s]{0,20}?\b(?:ranks?|processes|process|workers?)\b"],
+    "ADD_THREADS": [_MORE + r"[\w\s]{0,20}?\bthreads?\b"],
+    "REMOVE_THREADS": [_LESS + r"[\w\s]{0,20}?\bthreads?\b"],
+}
+_SPEED = _re.compile(r"faster|quicker|speed|sooner|help|time|slower|longer|performance|runtime|quick", _re.I)
+_SLOWER = _re.compile(r"slower|longer|take more time|hurt", _re.I)
+
+
+def detect_change(question):
+    """The single tuning change a yes/no question is about, or None."""
+    q = question.lower()
+    if not _SPEED.search(q):
+        return None
+    hits = {a for a, pats in CHANGE_LEXICON.items() if any(_re.search(p, q) for p in pats)}
+    if _re.search(r"(?:threads?)[\w\s]{0,15}?\bper (?:rank|process|worker)", q):  # "threads per process" = threads
+        hits -= {"ADD_RANKS", "REMOVE_RANKS"}
+    # "moving back to the CPU" mentions CPU only; "GPU" in "off the GPU" means USE_CPU
+    if "USE_CPU" in hits:
+        hits.discard("USE_GPU")
+    if "USE_FP32" in hits and "USE_BF16" in hits:
+        return None
+    return hits.pop() if len(hits) == 1 else None
+
+
+def grounded_answer(question, hints):
+    """(choice, confidence) from System 1's estimate for the change the question is about,
+    or None if the question is not about exactly one change System 1 has an estimate for."""
+    a = detect_change(question)
+    if a is None or not hints or a not in hints:
+        return None
+    r = hints[a]
+    if r == float("inf"):
+        verdict = 1  # System 1 expects the change to fail: it does not help
+    elif r < 1 / CLEAR:
+        verdict = 0
+    elif r > CLEAR:
+        verdict = 1
+    else:
+        verdict = 2
+    if _SLOWER.search(question) and verdict in (0, 1):
+        verdict = 1 - verdict  # "will it be slower?" asks the opposite
+    margin = abs(math.log(r)) if r not in (0, float("inf")) else 3.0
+    return NOUL[verdict], a, margin
+
+
 @dataclass
 class Answer:
     key: str
@@ -395,9 +459,19 @@ class Answer:
     latency_ms: float = 0.0
     familiar: bool = True
     reasons: List[str] = field(default_factory=list)
+    source: str = "encoder"  # or "System 1 estimate" for grounded change questions
 
     def to_dict(self):
         return asdict(self)
+
+
+# Accuracy of grounded answers by |log runtime ratio|, measured on out-of-fold System 1
+# estimates (scripts/eval_router.py); used as their confidence.
+GROUNDED_ACCURACY = [(0.05, 0.675), (0.2, 0.531), (float("inf"), 0.938)]  # measured on the training split
+
+
+def grounded_confidence(margin):
+    return next(acc for edge, acc in GROUNDED_ACCURACY if margin <= edge)
 
 
 class Answerer:
@@ -412,6 +486,7 @@ class Answerer:
         self.model.eval()
         self.meta = extra.get("meta", {})
         self.uses_hints = bool(extra.get("hints"))
+        self.grounding = True  # answer single-change speed questions from System 1 (see grounded_answer)
         self.fail_hints = bool(extra.get("fail_hints"))
 
     @torch.no_grad()
@@ -437,6 +512,15 @@ class Answerer:
         ms = (time.perf_counter() - t0) * 1000 / max(1, len(items))
         out = []
         for i, (key, qtext, kind, opts) in enumerate(specs):
+            g = grounded_answer(qtext, hints) if (kind == "noul" and opts == NOUL and self.grounding) else None
+            if g is not None:
+                choice, change, margin = g
+                conf = grounded_confidence(margin)
+                rest = (1 - conf) / 2
+                out.append(Answer(key, qtext, kind, choice, round(conf, 4),
+                                  {o: round(conf if o == choice else rest, 4) for o in opts}, round(ms, 2),
+                                  check["familiar"], check["reasons"], source=f"System 1 estimate ({change})"))
+                continue
             p = probs[i, :len(opts)]
             p = p / p.sum()
             j = int(p.argmax())

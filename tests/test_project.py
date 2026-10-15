@@ -310,3 +310,18 @@ def test_encoder_questions_are_answered_from_measurements():
         if e.family in ("action_helps", "near_best", "fails"):
             assert e.options == NOUL
     assert "Measured: runtime" in describe(states[0]["state"])
+
+
+def test_change_questions_are_grounded_in_system1_estimates():
+    from hpc_ds1.encoder import detect_change, grounded_answer
+    assert detect_change("Would the graphics card make this faster?") == "USE_GPU"
+    assert detect_change("Will doubling the processes speed this server batch up?") == "ADD_RANKS"
+    assert detect_change("Would more threads per process help?") == "ADD_THREADS"
+    assert detect_change("Should this job use fp32 or bf16?") is None          # not about one change's effect
+    assert detect_change("Is this already about as fast as it gets?") is None
+    hints = {"USE_GPU": 0.09, "ADD_RANKS": 1.4, "ADD_THREADS": 1.01}
+    assert grounded_answer("Would the graphics card make this faster?", hints)[0] == "yes"
+    assert grounded_answer("Will adding more workers make it quicker?", hints)[0] == "no"
+    assert grounded_answer("Would more threads per process help?", hints)[0] == "unclear"
+    assert grounded_answer("Would moving to the GPU make it slower?", hints)[0] == "no"   # inverted question
+    assert grounded_answer("Would the graphics card help?", None) is None              # no estimate: encoder answers
