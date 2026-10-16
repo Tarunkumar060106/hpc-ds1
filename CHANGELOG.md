@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## v1.0.2 — new machines get System 1, clearer fleet results
 
+- **`hpc-ds1 setup` now trains System 1 too.** Before, setup on a new machine trained only the step model, so System 1 kept answering with the bundled laptop model (e.g. on an RTX 5090 it picked the CPU for Monte Carlo and reached 21% of the best speed; after training on that machine it picks the GPU, 92% sure). Setup also uses the small step model chosen on validation (0.59M parameters) instead of the 2.85M one.
+- **Fleet task results** show the speed-up against the untuned default (1 rank × 1 thread, CPU, fp32) measured on that device, and the actual runtime next to System 1's prediction, instead of "×1.00", which was relative to System 1's own pick.
+- **Agents do one unrecorded warm-up run** before each task, so the first job on a cold GPU is not timed with start-up costs (seen on the lab RTX 5090: 68% of best cold, 98% warm).
+- **Agents print a short hint** when they can't reach the coordinator (IP, same network, port 8765) or the token is wrong, instead of a traceback.
 - **Grounded change questions:** yes/no questions about the effect of one change ("would the graphics card make this faster?") are now answered from System 1's estimate for that change, found with a transparent lexicon, instead of by the encoder. On held-out questions: 83.8% vs 68.1% (unseen wording), 82.8% vs 76.6% (unseen sizes), 85.2% vs 77.8% (both). Answers report their `source`. Caveat: the lexicon was written knowing the held-out synonyms, so its coverage still needs a blind test with human-written questions (`scripts/eval_router.py`).
 - Fixed: the v1.0.0 notes said the step model has 2.85M parameters; the model chosen on validation has 0.59M.
 
