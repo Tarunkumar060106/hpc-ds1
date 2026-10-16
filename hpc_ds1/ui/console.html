@@ -355,6 +355,12 @@ function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 function pct(x) { return Math.round(x * 100) + "%"; }
 function ms(sec) { return sec == null ? "-" : sec < 1 ? (sec * 1000).toFixed(sec < 0.01 ? 2 : 1) + " ms" : sec.toFixed(2) + " s"; }
+function ms(sec) { return sec < 1 ? (sec * 1e3).toPrecision(3) + " ms" : sec.toPrecision(3) + " s"; }
+function taskResult(r) {
+  var head = r.vs_default ? "×" + (r.vs_default >= 10 ? r.vs_default.toFixed(0) : r.vs_default.toFixed(1)) + " vs untuned" : "×" + r.speedup.toFixed(2) + " vs start";
+  var line = "ran " + ms(r.final_runtime) + (r.predicted_runtime_sec ? " · predicted " + ms(r.predicted_runtime_sec) : "") + " · " + r.experiments + (r.experiments === 1 ? " run" : " runs");
+  return head + '<div class="soft">' + line + "</div>" + '<div class="soft">' + cfg(r.final_config) + " · " + esc(r.stopped_reason.replace("_", " ")) + "</div>";
+}
 function cfg(c) { if (!c) return ""; return c.gpu ? "GPU · " + c.precision : c.ranks + "×" + c.threads + " CPU · " + c.precision; }
 function job(w, s) { return '<span class="mono">' + esc(w) + " " + esc(Number(s).toLocaleString()) + "</span>"; }
 function pill(t, label) { return '<span class="pill ' + esc(t) + '">' + esc(label || String(t).replace("_", " ")) + "</span>"; }
@@ -470,7 +476,7 @@ function renderFleet() {
       var cands = '<div class="cands">' + c.map(function (x) {
         return '<span class="' + (x.device === t.device ? "win" : "") + '">' + esc(x.name) + "</span><span>" + (x.finish_sec == null ? esc(x.note) : "finish " + ms(x.finish_sec) + " = queue " + ms(x.queue_sec) + " + run " + ms(x.expected_runtime_sec)) + "</span>";
       }).join("") + "</div>";
-      var res = t.result ? "×" + t.result.speedup.toFixed(2) + " in " + t.result.experiments + ' runs<div class="soft">' + cfg(t.result.final_config) + " · " + esc(t.result.stopped_reason.replace("_", " ")) + "</div>" : t.error ? '<span class="reasons">' + esc(t.error) + "</span>" : "";
+      var res = t.result ? taskResult(t.result) : t.error ? '<span class="reasons">' + esc(t.error) + "</span>" : "";
       return '<tr><td class="mono">' + esc(t.id) + '<div class="soft">' + when(t.submitted_at) + "</div></td><td>" + job(t.workload, t.size) + '<div class="soft">' + (t.system1 ? "System 1: " + cfg(t.system1.config) + " (" + pct(t.system1.confidence) + ")" : t.start === "system1" ? "System 1 on the device" : "from " + cfg(t.config)) + "</div></td><td><b>" + esc(names[t.device] || t.device) +
         '</b><div class="muted" style="font-size:12.5px">' + esc(t.placement.reason) + "</div>" + cands + "</td><td>" + pill(t.status) + "</td><td>" + res + "</td></tr>";
     }).join("") : '<tr><td colspan="5"><div class="empty">No tasks yet.</div></td></tr>';

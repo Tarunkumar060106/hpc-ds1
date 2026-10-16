@@ -235,6 +235,22 @@ class Agent:
         self.server, self.token, self.log = server.rstrip("/"), token, log
         self.name = name or socket.gethostname()
         self.id = None
+        self._defaults = None
+
+    def default_runtime(self, workload, size):
+        """Measured runtime of the untuned default (1 rank x 1 thread, CPU, fp32) on this
+        machine, from its setup measurements; None if it was never measured."""
+        if self._defaults is None:
+            self._defaults = {}
+            try:
+                from .dataset import build_tables, data_dir, load_measurements
+                from .space import config_key, make_config
+                tables, _ = build_tables(load_measurements(data_dir() / "measurements.jsonl"))
+                key = config_key(make_config(1, 1, False, "fp32"))
+                self._defaults = {p: t[key]["runtime_sec"] for p, t in tables.items() if key in t}
+            except (OSError, ValueError, KeyError):
+                pass
+        return self._defaults.get((workload, size))
 
     def _post(self, path, body):
         return _post(self.server, path, body, self.token)
@@ -280,18 +296,29 @@ class Agent:
 
         try:
             from .system1 import dual_start, gated
-            start, gate = t["config"], None
+            start, gate, pred = t["config"], None, None
             if t.get("start") == "system1":
                 start, pred, gate = dual_start(model, t["workload"], t["size"], t["threshold"], t["escalate_below"],
                                                t["config"])
                 if pred is not None:
                     report(event={"system1": pred.to_dict()})
                     self.log(f"task {tid}: System 1 picks {pred.config} ({pred.confidence:.0%} sure, {pred.mode})")
+            # one unrecorded warm-up run, so the first task on a cold GPU is not timed with start-up costs
+            model.engine.measure(t["workload"], t["size"], start, min_total=0.0, max_reps=1)
             runner = LiveRunner(t["workload"], t["size"], model.engine)
             r = run_tuning(gated(policy, gate), t["workload"], t["size"], start, runner, max_steps=t["max_steps"],
                            threshold=t["threshold"], on_escalate=on_escalate)
-            report(status="done", result=r.to_dict())
-            self.log(f"task {tid}: x{r.speedup:.2f} in {r.experiments} runs -> {r.final_config}")
+            result = r.to_dict()
+            if t.get("start") == "system1" and pred is not None:
+                result["predicted_runtime_sec"] = pred.expected_runtime_sec
+            base = self.default_runtime(t["workload"], t["size"])
+            if base:
+                result["default_runtime_sec"] = base
+                result["vs_default"] = round(base / max(r.final_runtime, 1e-12), 2)
+            report(status="done", result=result)
+            self.log(f"task {tid}: ran {r.final_runtime * 1e3:.2f} ms"
+                     + (f", x{result['vs_default']:.1f} vs untuned" if base else "")
+                     + f", {r.experiments} run(s) -> {r.final_config}")
         except Exception as e:  # report and keep serving
             report(status="failed", error=str(e))
             self.log(f"task {tid} failed: {e}")
@@ -300,7 +327,14 @@ class Agent:
         from .api import HPCDS1
         model = model or HPCDS1.load()
         try:
-            self.register(model)
+            try:
+                self.register(model)
+            except urllib.error.URLError as e:
+                if isinstance(e, urllib.error.HTTPError) and e.code == 401:
+                    raise SystemExit("the coordinator rejected the token: copy it again from `hpc-ds1 serve`")
+                raise SystemExit(f"can't reach the coordinator at {self.server} ({getattr(e, 'reason', e)}).\n"
+                                 "  check: is `hpc-ds1 serve --host 0.0.0.0` running there, is the IP right "
+                                 "(same network?), and is TCP port 8765 allowed through its firewall?")
             while True:
                 try:
                     t = self._post("/v1/fleet/poll", {"device": self.id}).get("task")
