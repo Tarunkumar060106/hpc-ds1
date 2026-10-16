@@ -1,0 +1,323 @@
+{
+  "target": "NVIDIA GeForce RTX 5090",
+  "model": "system1.pt",
+  "problems": 24,
+  "geo_pct_of_best": 77.6,
+  "median_pct_of_best": 96.8,
+  "within_5pct": 0.583,
+  "failed_picks": 0,
+  "per_problem": [
+    {
+      "problem": "fft:64",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "fp32"
+      },
+      "pct_of_best": 44.6,
+      "default_pct": 26.9,
+      "mode": "escalate",
+      "confidence": 0.442
+    },
+    {
+      "problem": "fft:192",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "fp32"
+      },
+      "pct_of_best": 99.6,
+      "default_pct": 11.9,
+      "mode": "escalate",
+      "confidence": 0.7987
+    },
+    {
+      "problem": "fft:256",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "fp32"
+      },
+      "pct_of_best": 97.6,
+      "default_pct": 8.2,
+      "mode": "escalate",
+      "confidence": 0.6904
+    },
+    {
+      "problem": "gemm:1024",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 99.5,
+      "default_pct": 2.6,
+      "mode": "escalate",
+      "confidence": 0.7762
+    },
+    {
+      "problem": "gemm:2048",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 98.5,
+      "default_pct": 1.1,
+      "mode": "escalate",
+      "confidence": 0.8149
+    },
+    {
+      "problem": "gemm:3072",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 99.2,
+      "default_pct": 0.7,
+      "mode": "escalate",
+      "confidence": 0.8166
+    },
+    {
+      "problem": "mltrain:1024",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 88.4,
+      "default_pct": 1.8,
+      "mode": "escalate",
+      "confidence": 0.8079
+    },
+    {
+      "problem": "mltrain:4096",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 94.7,
+      "default_pct": 0.3,
+      "mode": "escalate",
+      "confidence": 0.8451
+    },
+    {
+      "problem": "mltrain:8192",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 97.2,
+      "default_pct": 0.2,
+      "mode": "escalate",
+      "confidence": 0.856
+    },
+    {
+      "problem": "montecarlo:2000000",
+      "pick": {
+        "ranks": 8,
+        "threads": 4,
+        "gpu": false,
+        "precision": "bf16"
+      },
+      "pct_of_best": 23.2,
+      "default_pct": 4.2,
+      "mode": "escalate",
+      "confidence": 0.7556
+    },
+    {
+      "problem": "montecarlo:8000000",
+      "pick": {
+        "ranks": 8,
+        "threads": 4,
+        "gpu": false,
+        "precision": "bf16"
+      },
+      "pct_of_best": 21.2,
+      "default_pct": 4.1,
+      "mode": "escalate",
+      "confidence": 0.8732
+    },
+    {
+      "problem": "montecarlo:16000000",
+      "pick": {
+        "ranks": 8,
+        "threads": 4,
+        "gpu": false,
+        "precision": "bf16"
+      },
+      "pct_of_best": 21.9,
+      "default_pct": 4.2,
+      "mode": "escalate",
+      "confidence": 0.8906
+    },
+    {
+      "problem": "nbody:2048",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 91.3,
+      "default_pct": 0.6,
+      "mode": "escalate",
+      "confidence": 0.8213
+    },
+    {
+      "problem": "nbody:4096",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 92.7,
+      "default_pct": 0.3,
+      "mode": "escalate",
+      "confidence": 0.8412
+    },
+    {
+      "problem": "nbody:6144",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 87.5,
+      "default_pct": 0.2,
+      "mode": "escalate",
+      "confidence": 0.8532
+    },
+    {
+      "problem": "server:1000",
+      "pick": {
+        "ranks": 8,
+        "threads": 1,
+        "gpu": false,
+        "precision": "fp32"
+      },
+      "pct_of_best": 100.0,
+      "default_pct": 13.8,
+      "mode": "escalate",
+      "confidence": 0.8563
+    },
+    {
+      "problem": "server:4000",
+      "pick": {
+        "ranks": 8,
+        "threads": 1,
+        "gpu": false,
+        "precision": "fp32"
+      },
+      "pct_of_best": 100.0,
+      "default_pct": 13.1,
+      "mode": "escalate",
+      "confidence": 0.8716
+    },
+    {
+      "problem": "server:8000",
+      "pick": {
+        "ranks": 8,
+        "threads": 1,
+        "gpu": false,
+        "precision": "fp32"
+      },
+      "pct_of_best": 100.0,
+      "default_pct": 17.1,
+      "mode": "escalate",
+      "confidence": 0.8751
+    },
+    {
+      "problem": "spmv:200000",
+      "pick": {
+        "ranks": 1,
+        "threads": 4,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 92.3,
+      "default_pct": 1.7,
+      "mode": "escalate",
+      "confidence": 0.7891
+    },
+    {
+      "problem": "spmv:800000",
+      "pick": {
+        "ranks": 1,
+        "threads": 4,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 96.5,
+      "default_pct": 1.0,
+      "mode": "escalate",
+      "confidence": 0.8412
+    },
+    {
+      "problem": "spmv:1600000",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 99.8,
+      "default_pct": 0.7,
+      "mode": "escalate",
+      "confidence": 0.8453
+    },
+    {
+      "problem": "stencil:96",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 96.0,
+      "default_pct": 8.3,
+      "mode": "escalate",
+      "confidence": 0.6904
+    },
+    {
+      "problem": "stencil:160",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 99.6,
+      "default_pct": 2.2,
+      "mode": "escalate",
+      "confidence": 0.7818
+    },
+    {
+      "problem": "stencil:192",
+      "pick": {
+        "ranks": 1,
+        "threads": 8,
+        "gpu": true,
+        "precision": "bf16"
+      },
+      "pct_of_best": 98.6,
+      "default_pct": 1.7,
+      "mode": "escalate",
+      "confidence": 0.7853
+    }
+  ]
+}
