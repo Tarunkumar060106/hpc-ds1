@@ -1,0 +1,238 @@
+{
+  "problems": 72,
+  "budget": 10,
+  "methods": {
+    "default": {
+      "pct_of_best_after_runs": {
+        "1": 4.3,
+        "2": 4.3,
+        "3": 4.3,
+        "5": 4.3,
+        "10": 4.3
+      },
+      "median_pct_of_best_after_runs": {
+        "1": 3.6,
+        "2": 3.6,
+        "3": 3.6,
+        "5": 3.6,
+        "10": 3.6
+      },
+      "within_5pct_share": 0.0,
+      "median_runs_to_5pct": null,
+      "mean_runs_used": 1.0,
+      "core_hours_tuning_total": 0.0069,
+      "gpu_hours_tuning_total": 0.0
+    },
+    "rules": {
+      "pct_of_best_after_runs": {
+        "1": 4.3,
+        "2": 47.6,
+        "3": 70.7,
+        "5": 80.5,
+        "10": 80.5
+      },
+      "median_pct_of_best_after_runs": {
+        "1": 3.6,
+        "2": 51.6,
+        "3": 80.5,
+        "5": 85.5,
+        "10": 85.5
+      },
+      "within_5pct_share": 0.333,
+      "median_runs_to_5pct": 3.0,
+      "mean_runs_used": 3.43,
+      "core_hours_tuning_total": 0.0107,
+      "gpu_hours_tuning_total": 0.0015
+    },
+    "random": {
+      "pct_of_best_after_runs": {
+        "1": 11.4,
+        "2": 16.1,
+        "3": 25.2,
+        "5": 37.7,
+        "10": 86.8
+      },
+      "median_pct_of_best_after_runs": {
+        "1": 14.4,
+        "2": 14.7,
+        "3": 40.1,
+        "5": 61.3,
+        "10": 97.5
+      },
+      "within_5pct_share": 0.575,
+      "median_runs_to_5pct": 6.0,
+      "mean_runs_used": 10.0,
+      "core_hours_tuning_total": 2.2462,
+      "gpu_hours_tuning_total": 0.0018
+    },
+    "greedy": {
+      "pct_of_best_after_runs": {
+        "1": 4.3,
+        "2": 6.8,
+        "3": 7.7,
+        "5": 57.6,
+        "10": 93.6
+      },
+      "median_pct_of_best_after_runs": {
+        "1": 3.6,
+        "2": 6.1,
+        "3": 7.0,
+        "5": 59.8,
+        "10": 99.7
+      },
+      "within_5pct_share": 0.75,
+      "median_runs_to_5pct": 8.0,
+      "mean_runs_used": 8.86,
+      "core_hours_tuning_total": 0.3047,
+      "gpu_hours_tuning_total": 0.0023
+    },
+    "bo_tpe": {
+      "pct_of_best_after_runs": {
+        "1": 32.3,
+        "2": 35.0,
+        "3": 35.2,
+        "5": 83.5,
+        "10": 96.3
+      },
+      "median_pct_of_best_after_runs": {
+        "1": 58.5,
+        "2": 69.0,
+        "3": 69.4,
+        "5": 98.2,
+        "10": 100.0
+      },
+      "within_5pct_share": 0.861,
+      "median_runs_to_5pct": 4.0,
+      "mean_runs_used": 10.0,
+      "core_hours_tuning_total": 1.2902,
+      "gpu_hours_tuning_total": 0.0033
+    },
+    "bo_gp": {
+      "pct_of_best_after_runs": {
+        "1": 35.5,
+        "2": 37.2,
+        "3": 37.7,
+        "5": 57.6,
+        "10": 80.9
+      },
+      "median_pct_of_best_after_runs": {
+        "1": 57.1,
+        "2": 61.3,
+        "3": 61.3,
+        "5": 96.5,
+        "10": 100.0
+      },
+      "within_5pct_share": 0.634,
+      "median_runs_to_5pct": 4.0,
+      "mean_runs_used": 9.61,
+      "core_hours_tuning_total": 0.6141,
+      "gpu_hours_tuning_total": 0.004
+    },
+    "xgb_rank": {
+      "pct_of_best_after_runs": {
+        "1": 92.8,
+        "2": 97.3,
+        "3": 97.9,
+        "5": 98.9,
+        "10": 99.5
+      },
+      "median_pct_of_best_after_runs": {
+        "1": 99.2,
+        "2": 100.0,
+        "3": 100.0,
+        "5": 100.0,
+        "10": 100.0
+      },
+      "within_5pct_share": 0.972,
+      "median_runs_to_5pct": 1.0,
+      "mean_runs_used": 10.0,
+      "core_hours_tuning_total": 0.1228,
+      "gpu_hours_tuning_total": 0.0028
+    },
+    "system1_rank": {
+      "pct_of_best_after_runs": {
+        "1": 96.9,
+        "2": 97.7,
+        "3": 98.4,
+        "5": 99.5,
+        "10": 99.6
+      },
+      "median_pct_of_best_after_runs": {
+        "1": 98.9,
+        "2": 100.0,
+        "3": 100.0,
+        "5": 100.0,
+        "10": 100.0
+      },
+      "within_5pct_share": 0.986,
+      "median_runs_to_5pct": 1.0,
+      "mean_runs_used": 10.0,
+      "core_hours_tuning_total": 0.1034,
+      "gpu_hours_tuning_total": 0.0034
+    },
+    "system2": {
+      "pct_of_best_after_runs": {
+        "1": 4.3,
+        "2": 7.5,
+        "3": 18.0,
+        "5": 63.3,
+        "10": 87.8
+      },
+      "median_pct_of_best_after_runs": {
+        "1": 3.6,
+        "2": 6.7,
+        "3": 37.9,
+        "5": 95.7,
+        "10": 97.8
+      },
+      "within_5pct_share": 0.653,
+      "median_runs_to_5pct": 5.0,
+      "mean_runs_used": 4.6,
+      "core_hours_tuning_total": 0.049,
+      "gpu_hours_tuning_total": 0.0002
+    },
+    "system2_rand": {
+      "pct_of_best_after_runs": {
+        "1": 14.9,
+        "2": 25.1,
+        "3": 35.3,
+        "5": 73.9,
+        "10": 84.5
+      },
+      "median_pct_of_best_after_runs": {
+        "1": 24.8,
+        "2": 66.0,
+        "3": 77.0,
+        "5": 95.4,
+        "10": 96.4
+      },
+      "within_5pct_share": 0.583,
+      "median_runs_to_5pct": 3.0,
+      "mean_runs_used": 2.95,
+      "core_hours_tuning_total": 0.4962,
+      "gpu_hours_tuning_total": 0.0003
+    },
+    "dual": {
+      "pct_of_best_after_runs": {
+        "1": 96.9,
+        "2": 96.9,
+        "3": 96.9,
+        "5": 96.9,
+        "10": 96.9
+      },
+      "median_pct_of_best_after_runs": {
+        "1": 98.9,
+        "2": 98.9,
+        "3": 98.9,
+        "5": 98.9,
+        "10": 98.9
+      },
+      "within_5pct_share": 0.833,
+      "median_runs_to_5pct": 1.0,
+      "mean_runs_used": 1.0,
+      "core_hours_tuning_total": 0.0181,
+      "gpu_hours_tuning_total": 0.0001
+    }
+  },
+  "seconds": 401
+}
