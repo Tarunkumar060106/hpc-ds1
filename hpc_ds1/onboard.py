@@ -4,6 +4,7 @@
     learn     label the measurements, train, calibrate the confidence
     guard     fit the familiarity guard on this machine's measurements
     save      ~/.hpc_ds1/model/hpc_ds1.pt, picked up by hpc_ds1.load() from then on
+    system 1  ~/.hpc_ds1/model/system1.pt, trained on the same measurements (hpc_ds1.learn)
 
 Everything stays on the machine: measurements in ~/.hpc_ds1/data, a report in
 ~/.hpc_ds1/setup_report.json. Set HPC_DS1_HOME to keep them somewhere else.
@@ -23,7 +24,7 @@ from .dataset import build_states, build_tables, load_hardware, load_measurement
 from .training import evaluate, fit_guard, fit_temperature, reliability, save_checkpoint, split, tensors, train_one
 
 
-def setup(home=None, quick=False, workloads=None, size="medium", collect_data=True, device=None, log=print):
+def setup(home=None, quick=False, workloads=None, size="small", collect_data=True, device=None, log=print):
     home = Path(home or home_dir())
     data, ckpt = home / "data", home / "model" / "hpc_ds1.pt"
     t0 = time.time()
@@ -89,4 +90,11 @@ def setup(home=None, quick=False, workloads=None, size="medium", collect_data=Tr
         f"auto-runs {report['modes_on_test']['auto']:.0%} of decisions"
         + (f" at {report['auto_accuracy']:.0%} accuracy" if report["auto_accuracy"] is not None else ""))
     log(f"saved {ckpt} ({report['minutes']} min). hpc_ds1.load() now uses this machine's model.")
+
+    log("[+] training System 1 (instant configuration) on this machine's measurements")
+    from .learn import learn
+    from .paths import MODELS_DIR
+    from .system1 import System1
+    bundled = MODELS_DIR / "system1.pt"
+    learn(previous=System1.load(bundled) if bundled.exists() else None, device=str(device), log=lambda m: log("      " + m))
     return report
