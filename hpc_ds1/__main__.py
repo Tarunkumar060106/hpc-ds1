@@ -4,6 +4,7 @@ import argparse
 import json
 import warnings
 
+from . import style as S
 from .api import DEFAULT_ESCALATE_BELOW, DEFAULT_THRESHOLD, HPCDS1
 from .kernels import KERNELS
 
@@ -76,13 +77,13 @@ def main():
     if args.cmd == "setup":
         from .onboard import setup
         setup(args.home, quick=args.quick, workloads=args.workloads.split(",") if args.workloads else None,
-              collect_data=not args.skip_measure, log=lambda m: print(m, flush=True))
+              collect_data=not args.skip_measure, log=S.log)
         return
 
     if args.cmd == "agent":
         from .fleet import Agent
         try:
-            Agent(args.server, args.token, args.name, log=lambda x: print(x, flush=True)).run(
+            Agent(args.server, args.token, args.name, log=S.log).run(
                 HPCDS1.load(args.checkpoint))
         except KeyboardInterrupt:
             pass
@@ -92,11 +93,18 @@ def main():
         from .fleet import submit
         t = submit(args.server, args.token, args.workload, args.size, _config(args),
                    threshold=args.threshold, escalate_below=args.escalate_below, start=args.start)
-        print(f"task {t['id']} -> {next(c['name'] for c in t['placement']['candidates'] if c['device'] == t['device'])}: "
-              f"{t['placement']['reason']}")
-        for c in t["placement"]["candidates"]:
-            est = f"{c['finish_sec']:.4g}s" if c["finish_sec"] is not None else c["note"]
-            print(f"  {c['name']:20s} {est}")
+        chosen = next(c["name"] for c in t["placement"]["candidates"] if c["device"] == t["device"])
+        print(f"{S.good(S.OK)} {S.bold('task ' + t['id'])} {S.dim(S.ARROW)} {S.paint(chosen, 'bold', 'magenta')}  "
+              f"{S.dim('earliest expected finish')}", flush=True)
+        for c in sorted(t["placement"]["candidates"], key=lambda c: (c["finish_sec"] is None, c["finish_sec"] or 0)):
+            mark = S.good(S.DOT) if c["device"] == t["device"] else S.dim(S.DOT)
+            if c["finish_sec"] is None:
+                print(f"  {mark} {c['name']:18s} {S.dim(c['note'])}")
+                continue
+            q, run = c.get("queue_sec") or 0.0, c.get("expected_runtime_sec")
+            detail = S.dim(f"queue {S.secs(q)} + run {S.secs(run)}") if run is not None else ""
+            name = S.bold(c["name"].ljust(18)) if c["device"] == t["device"] else c["name"].ljust(18)
+            print(f"  {mark} {name} {S.num(S.secs(c['finish_sec'])):>10}  {detail}")
         return
 
     if args.cmd == "learn":
@@ -105,7 +113,7 @@ def main():
             prev = HPCDS1.load(device="cpu").system1
         except (FileNotFoundError, ValueError):
             prev = None
-        learn(prev, log=lambda m: print(m, flush=True))
+        learn(prev, log=S.log)
         return
 
     if args.cmd == "tasks":
@@ -114,11 +122,12 @@ def main():
         try:
             trained = HPCDS1.load(args.checkpoint, device="cpu").net.workloads
         except (FileNotFoundError, ValueError) as e:
-            print(f"(no usable model: {e})")
+            S.item(f"no usable model: {e}", "warn")
+        S.header("Workloads", f"{len(KERNELS)} known")
         for w, k in KERNELS.items():
-            mark = "trained" if w in trained else "NOT TRAINED - run `hpc-ds1 setup --workloads " + w + "`"
-            print(f"{w:12s} {k.display_name:36s} sizes {k.sizes[0]:,}-{k.sizes[-1]:,} {k.size_unit}   [{mark}]")
-        print("\nplugins loaded: " + (", ".join(PLUGINS) or "none (see examples/plugins/)"))
+            mark = S.good(S.OK + " trained") if w in trained else S.warn(f"{S.WARN} not trained") + S.dim(f"  hpc-ds1 setup --workloads {w}")
+            print(f"  {S.accent(w.ljust(12))} {k.display_name:36s} {S.dim(f'{k.sizes[0]:,}-{k.sizes[-1]:,} {k.size_unit}'.ljust(34))} {mark}")
+        print(f"\n  {S.dim('plugins:')} " + (", ".join(PLUGINS) or S.dim("none (see examples/plugins/)")))
         return
 
     if args.cmd == "serve":
@@ -136,52 +145,73 @@ def main():
                                           for w, k in KERNELS.items()}}, indent=2))
         elif args.cmd == "predict":
             p = model.predict(args.workload, args.size, threshold=args.threshold)
-            c = p.config
-            where = "GPU" if c["gpu"] else f"{c['ranks']} rank(s) x {c['threads']} thread(s) CPU"
-            print(f"System 1 ({p.latency_ms:.1f} ms, nothing run): {where}, {c['precision']}")
-            print(f"  expected runtime {p.expected_runtime_sec * 1000:.2f} ms, {p.confidence:.0%} sure it is within "
-                  f"5% of the best -> {p.mode.upper()}" + "".join(f"\n  - {r}" for r in p.reasons))
-            for a in p.alternatives:
-                print(f"  alternative: {a['config']}  ~{a['expected_runtime_sec'] * 1000:.2f} ms")
+            S.header(f"System 1 {S.ARROW} {args.workload} {args.size:,}", f"{p.latency_ms:.1f} ms, nothing run")
+            S.kv("configuration", S.cfg(p.config))
+            S.kv("expected runtime", S.num(S.secs(p.expected_runtime_sec)))
+            S.kv("confidence", f"{S.num(S.pct(p.confidence))} sure it is within 5% of the best  {S.mode(p.mode)}")
+            for r in p.reasons:
+                S.item(S.warn(r), "warn")
+            if p.alternatives:
+                S.kv("alternatives", "")
+                for a in p.alternatives:
+                    print(f"    {S.dim(S.DOT)} {S.cfg(a['config'])}  {S.dim('~' + S.secs(a['expected_runtime_sec']))}")
+            print()
         elif args.cmd == "plan":
             def ask(action, confidence, state):
                 d = model.last_decision
                 why = "".join(f"\n    - {r}" for r in (d.reasons if d else state.get("prediction", {}).get("reasons", [])))
-                return input(f"  [needs approval] {action} ({confidence:.0%} sure){why}\n  run it? [y/N] ").strip().lower() == "y"
+                return input(f"  {S.mode('confirm')} {S.bold(action)} ({S.pct(confidence)} sure){why}\n  run it? [y/N] ").strip().lower() == "y"
 
             pred, r, used2 = model.plan(args.workload, args.size, threshold=args.threshold, on_escalate=ask)
-            print(f"System 1 picked {pred.config} ({pred.confidence:.0%} sure, {pred.mode}, {pred.latency_ms:.1f} ms)")
+            S.header(f"Plan {S.ARROW} {args.workload} {args.size:,}")
+            S.kv("System 1 picked", f"{S.cfg(pred.config)}  {S.num(S.pct(pred.confidence))} sure  {S.mode(pred.mode)}  "
+                                    f"{S.dim(f'{pred.latency_ms:.1f} ms')}")
             if r is None:
-                print("not run: unfamiliar job and no approval")
+                S.item(S.warn("not run: unfamiliar job and no approval"), "warn")
             else:
-                how = "System 2 tuned from there" if used2 else "kept as is: System 1 was confident and the run confirmed it"
-                print(f"{how}: {r.final_runtime * 1000:.2f} ms in {r.experiments} real run(s); final config {r.final_config}")
+                S.kv("predicted", S.secs(pred.expected_runtime_sec))
+                S.kv("ran", f"{S.num(S.secs(r.final_runtime))} in {r.experiments} real run{'s' if r.experiments != 1 else ''}")
+                S.kv("final", S.cfg(r.final_config))
+                S.item("System 2 tuned from there" if used2 else
+                       "kept as is: System 1 was confident and the run confirmed it", "ok")
+            print()
         elif args.cmd == "decide":
             state = model.observe(args.workload, args.size, _config(args))
             t = state["telemetry"]
-            print(f"measured: {t['runtime_sec']:.4f}s  cpu {t['cpu_util_pct']}%  gpu {t['gpu_busy_pct']}%  "
-                  f"comm {t['comm_overhead_pct']}%\n")
+            S.header(f"Measured {S.ARROW} {args.workload} {args.size:,}", S.cfg(_config(args)))
+            S.kv("runtime", S.num(S.secs(t["runtime_sec"])))
+            S.kv("cpu / gpu / comm", f"{t['cpu_util_pct']}% / {t['gpu_busy_pct']}% / {t['comm_overhead_pct']}%")
+            print()
             cands = args.candidates.split(",") if args.candidates else None
             d = model.decide(state, cands, args.threshold, args.escalate_below)
             print(json.dumps(d.to_dict(), indent=2))
-            print(f"\n{d.mode.upper()}: {d.choice} ({d.confidence:.0%} sure)"
-                  + "".join(f"\n  - {r}" for r in d.reasons))
+            print(f"\n{S.mode(d.mode)} {S.bold(d.choice)}  {S.num(S.pct(d.confidence))} sure")
+            for r in d.reasons:
+                S.item(S.warn(r), "warn")
         elif args.cmd == "tune":
             def ask(action, confidence, state):
                 d = model.last_decision
                 why = "".join(f"\n    - {r}" for r in d.reasons) if d and d.reasons else ""
-                tier = "ESCALATED" if d and d.mode == "escalate" else "please confirm"
-                answer = input(f"  [{tier}] model is {confidence:.0%} sure about {action}{why}\n  run it? [y/N] ")
+                tier = S.mode("escalate" if d and d.mode == "escalate" else "confirm")
+                answer = input(f"  {tier} model is {S.pct(confidence)} sure about {S.bold(action)}{why}\n  run it? [y/N] ")
                 return answer.strip().lower() == "y"
 
             r = model.tune(args.workload, args.size, _config(args), max_steps=args.max_steps, threshold=args.threshold,
                            escalate_below=args.escalate_below, on_escalate=ask)
+            S.header(f"Tuning {S.ARROW} {args.workload} {args.size:,}", f"from {S.cfg(_config(args))}")
             for st in r.steps:
-                after = f"{st.runtime_after:.4f}s" if st.runtime_after is not None else "-"
-                print(f"step {st.step + 1}: {st.action:15s} conf {st.confidence:.3f}  {st.runtime_before:.4f}s -> {after}"
-                      f"  {'kept' if st.accepted and st.action != 'STOP_TUNING' else st.note or ('done' if st.action == 'STOP_TUNING' else 'rejected')}")
-            print(f"\nx{r.speedup:.2f} faster in {r.experiments} real runs (stopped: {r.stopped_reason}); "
-                  f"final config {r.final_config}")
+                if st.action == "STOP_TUNING":
+                    print(f"  {S.dim(f'{st.step + 1:>2}')} {S.good(S.OK)} {S.bold('stop')}  {S.dim(f'{st.confidence:.0%} sure')}")
+                    continue
+                kept = st.accepted
+                after = S.secs(st.runtime_after) if st.runtime_after is not None else "-"
+                verdict = S.good("kept") if kept else S.bad(st.note or "rejected")
+                print(f"  {S.dim(f'{st.step + 1:>2}')} {(S.good(S.OK) if kept else S.bad(S.BAD))} {st.action:15s} "
+                      f"{S.dim(f'{st.confidence:.0%}'):>4}  {S.secs(st.runtime_before)} {S.dim(S.ARROW)} {after}  {verdict}")
+            print(f"\n  {S.good(S.bold(f'x{r.speedup:.2f} faster'))} in {r.experiments} real runs  "
+                  f"{S.dim('(' + r.stopped_reason.replace('_', ' ') + ')')}")
+            S.kv("final", S.cfg(r.final_config))
+            print()
     finally:
         model.close()
 

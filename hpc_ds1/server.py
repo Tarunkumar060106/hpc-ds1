@@ -346,12 +346,15 @@ def serve(host="127.0.0.1", port=8765, checkpoint=None, device=None):
     app = App(model)
     httpd = ThreadingHTTPServer((host, port), make_handler(app))
     info = model.info()
-    print(f"HPC-DS1 ({info['parameters']:,} params, {info['device']}) on http://{host}:{port}", flush=True)
-    print(f"  console: http://{host}:{port}/   API: POST http://{host}:{port}/v1/decide", flush=True)
-    print(f"  fleet join token: {app.fleet.token}", flush=True)
-    print(f"  connect a device: hpc-ds1 agent --server http://<this-machine-ip>:{port} --token {app.fleet.token}"
-          + ("" if host not in ("127.0.0.1", "localhost") else "   (serve with --host 0.0.0.0 to accept other machines)"),
-          flush=True)
+    from . import style as S
+    S.header("HPC-DS1 coordinator", f"{info['parameters']:,} params on {info['device']}")
+    S.kv("console", S.accent(f"http://{host}:{port}/"))
+    S.kv("API", S.dim(f"POST http://{host}:{port}/v1/decide"))
+    S.kv("fleet join token", S.paint(app.fleet.token, "bold", "yellow"))
+    S.kv("connect a device", f"hpc-ds1 agent --server http://<this-machine-ip>:{port} --token {app.fleet.token}")
+    if host in ("127.0.0.1", "localhost"):
+        S.item(S.warn("only this machine can connect; serve with --host 0.0.0.0 to accept other machines"), "warn")
+    print(S.dim("  Ctrl+C to stop") + "\n", flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
