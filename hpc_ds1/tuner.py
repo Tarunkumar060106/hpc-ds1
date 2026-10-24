@@ -107,6 +107,7 @@ class LiveRunner:
         self.engine = engine or Engine()
         self.hardware = self.engine.hardware
         self._ref = None
+        self.last_error = None  # why the last config failed, for reports
 
     def reference(self):
         if self._ref is None:
@@ -120,6 +121,7 @@ class LiveRunner:
     def __call__(self, config):
         r = self.engine.measure(self.workload, self.size, config)
         if not r["ok"]:
+            self.last_error = r.get("error")
             log_live_run(self.hardware, self.workload, self.size, config, r)
             return None
         a = np.asarray(r["result"]).astype(np.complex128 if np.iscomplexobj(r["result"]) else np.float64)

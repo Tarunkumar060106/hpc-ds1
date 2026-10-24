@@ -58,6 +58,16 @@ def _rank_main(conn):
             conn.send((seq, "err", f"{type(e).__name__}: {e}", 0.0))
 
 
+def _recv(conn, proc, poll_sec=1.0):
+    """A rank's reply; raises instead of waiting forever if the rank process has died
+    (e.g. Windows could not load torch in it because memory ran out)."""
+    while not conn.poll(poll_sec):
+        if not proc.is_alive():
+            raise RuntimeError(f"rank process {proc.pid} died (exit code {proc.exitcode}); "
+                               "the machine may be out of memory")
+    return conn.recv()
+
+
 class RankGroup:
     """P-1 persistent worker ranks (rank 0 is the caller)."""
 
@@ -172,8 +182,8 @@ class Engine:
             err = f"{type(e).__name__}: {e}"
         # Always collect every rank's reply, even after a failure, so no stale
         # message is ever read as the answer to a later configuration.
-        for conn in conns:
-            rseq, status, payload, dt = conn.recv()
+        for conn, proc in zip(conns, group.procs if group else []):
+            rseq, status, payload, dt = _recv(conn, proc)
             if rseq != seq:
                 raise RuntimeError(f"rank reply out of sequence ({rseq} != {seq})")
             if status != "ok":
@@ -196,6 +206,22 @@ class Engine:
         recorded from that single run instead of being repeated.
         """
         cfg = normalize_config(cfg)
+        kern = KERNELS[workload]
+        if hasattr(kern, "memory_gb"):
+            # memory-heavy workloads: keep only the worker group this run needs, so the RAM
+            # check below sees memory that other groups' cached problems would otherwise hold
+            keep = None if cfg["gpu"] else cfg["ranks"]
+            for n in [n for n in self.groups if n != keep]:
+                self.groups.pop(n).close()
+            if cfg["gpu"] is False:
+                self.local_cache.clear()
+        if not cfg["gpu"] and hasattr(kern, "memory_gb"):
+            # protect the machine: a CPU run that cannot fit in free RAM would swap or crash it
+            need = kern.memory_gb(size, cfg["precision"], cfg["ranks"])
+            free = psutil.virtual_memory().available / 2 ** 30
+            if need > 0.8 * free:
+                return {"ok": False, "skipped": True, "oom": True,
+                        "error": f"skipped: needs ~{need:.1f} GB RAM, {free:.1f} GB free"}
         group = None if cfg["gpu"] or cfg["ranks"] == 1 else self._group(cfg["ranks"])
         pids = group.pids() if group else []
         if cfg["gpu"]:
@@ -221,7 +247,15 @@ class Engine:
             cpu1 = self._cpu_seconds(pids)
             busy = w0 + (0.0 if capped else sum(walls))
         except Exception as e:
-            return {"ok": False, "error": f"{type(e).__name__}: {str(e)[:200]}"}
+            msg = f"{type(e).__name__}: {str(e)[:200]}"
+            if "rank process" in msg and "died" in msg and cfg["ranks"] in self.groups:
+                self.groups.pop(cfg["ranks"]).close()  # start a fresh group next time
+            oom = "out of memory" in msg.lower() or "outofmemory" in msg.lower() or "not enough memory" in msg.lower()
+            if oom:
+                self.local_cache.clear()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            return {"ok": False, "error": msg, "oom": oom}
         finally:
             torch.set_num_threads(self.hardware["cpu_threads"])
 
@@ -235,6 +269,9 @@ class Engine:
             "memory_gb": round(self._rss_gb(pids) + (torch.cuda.max_memory_allocated() / 2 ** 30 if cfg["gpu"] else 0), 3),
             "noise_pct": round(100.0 * (max(walls) - min(walls)) / wall, 2),
         }
+        if cfg["gpu"]:
+            # real peak GPU memory of the job; above the card's memory the driver spills to system RAM
+            tel["gpu_peak_gb"] = round(torch.cuda.max_memory_allocated() / 2 ** 30, 3)
         return {"ok": True, "telemetry": tel, "walls": [round(w, 6) for w in walls], "capped": capped,
                 "result": res}
 

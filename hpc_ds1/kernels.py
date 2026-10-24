@@ -351,7 +351,184 @@ class Server(Kernel):
         return 2e5 * n
 
 
-KERNELS = {k.name: k for k in (GEMM(), FFT3D(), Stencil3D(), SpMV(), NBody(), MonteCarlo(), MLTrain(), Server())}
+# ---------------------------------------------------------------------------
+# Real AI training workloads whose memory grows with the batch, so the larger
+# sizes do not fit on small GPUs (a 6 GB laptop GPU) but do on large ones.
+# Each returns a fixed slice of the gradients, so results can be checked
+# against fp32 and gathered cheaply. Layer norms are per sample (LayerNorm,
+# GroupNorm), so splitting the batch across ranks gives the same gradient.
+# ---------------------------------------------------------------------------
+
+def _bytes(dtype):
+    return 2 if dtype in (torch.bfloat16, torch.float16, "bf16") else 4
+
+
+def _grad_probe(params, n=2048):
+    """A fixed sample of every parameter's gradient: enough to check correctness."""
+    return torch.cat([p.grad.float().flatten()[:n] for p in params])
+
+
+class LLMTrain(Kernel):
+    """One training step (forward, loss, backward) of a GPT-style decoder
+    language model: 8 transformer blocks, d_model 768, 12 heads, 256-token
+    sequences, 8k vocabulary (~63M parameters). Memory grows with the batch:
+    the activations of every layer are kept for the backward pass."""
+    name = "llm_train"
+    display_name = "Language model training step (GPT-style)"
+    character = "AI training: attention + MLP blocks, memory grows with batch, GPU-class"
+    sizes = [4, 8, 16, 24, 32, 48, 64, 96, 128]
+    test_size = 24
+    size_unit = "sequences of 256 tokens per step (GPT, 63M params)"
+    tolerance = 6e-2  # bf16 end to end (weights and activations), checked on a gradient sample
+    seq, d, layers, heads, vocab = 256, 768, 8, 12, 8192
+    gpu_class = True
+
+    def _params(self, g, device, dtype):
+        d, ff = self.d, 4 * self.d
+
+        def w(*shape, scale=None):
+            t = torch.randn(*shape, generator=g) * (scale or 1.0 / math.sqrt(shape[0]))
+            return t.to(device, dtype).requires_grad_()
+
+        p = {"emb": w(self.vocab, d, scale=0.02), "pos": w(self.seq, d, scale=0.02), "blocks": []}
+        for _ in range(self.layers):
+            p["blocks"].append({"qkv": w(d, 3 * d), "out": w(d, d), "up": w(d, ff), "down": w(ff, d)})
+        return p
+
+    def setup(self, n, shard, nshards, device, dtype):
+        g = _gen(SEED + 11)
+        p = self._params(g, device, dtype)
+        tokens = torch.randint(0, self.vocab, (n, self.seq + 1), generator=g)
+        lo, hi = _rows(n, shard, nshards)
+        return {"p": p, "x": tokens[lo:hi, :-1].to(device), "y": tokens[lo:hi, 1:].to(device), "n": n}
+
+    def _all(self, p):
+        out = [p["emb"], p["pos"]]
+        for b in p["blocks"]:
+            out += [b["qkv"], b["out"], b["up"], b["down"]]
+        return out
+
+    def run(self, inp):
+        F = torch.nn.functional
+        p = inp["p"]
+        params = self._all(p)
+        for t in params:
+            t.grad = None
+        b, s = inp["x"].shape
+        d, h = self.d, self.heads
+        x = p["emb"][inp["x"]] + p["pos"][:s]
+        for blk in p["blocks"]:
+            a = F.layer_norm(x, (d,))
+            q, k, v = (a @ blk["qkv"]).split(d, dim=-1)
+            q, k, v = (t.view(b, s, h, d // h).transpose(1, 2) for t in (q, k, v))
+            att = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+            x = x + att.transpose(1, 2).reshape(b, s, d) @ blk["out"]
+            x = x + F.gelu(F.layer_norm(x, (d,)) @ blk["up"]) @ blk["down"]
+        logits = F.layer_norm(x, (d,)) @ p["emb"].t()
+        loss = F.cross_entropy(logits.float().view(-1, self.vocab), inp["y"].reshape(-1), reduction="sum")
+        loss.backward()
+        return _grad_probe(params)
+
+    def combine(self, parts, n):
+        return torch.stack(parts).sum(0) / (n * self.seq)
+
+    def work(self, n):
+        params = self.vocab * self.d + self.layers * 12 * self.d ** 2
+        tokens = n * self.seq
+        return 6.0 * params * tokens + 12.0 * self.layers * self.seq * self.d * tokens
+
+    def memory_gb(self, n, precision="fp32", nshards=1):
+        """Rough peak memory of one step (weights, gradients, saved activations), used
+        only before any device has measured this size."""
+        bw = _bytes(precision)
+        params = self.vocab * self.d + self.layers * 12 * self.d ** 2 + self.seq * self.d
+        tokens = n * self.seq / nshards
+        act = tokens * (self.layers * 20 * self.d + 3 * self.vocab) * bw
+        return (2 * params * bw * nshards + act * nshards) / 2 ** 30
+
+
+class CNNTrain(Kernel):
+    """One training step of a ResNet-18-style image classifier on 112×112 images
+    (~11M parameters, GroupNorm so batch shards are independent). Memory grows
+    with the batch: every feature map is kept for the backward pass."""
+    name = "cnn_train"
+    display_name = "Image model training step (ResNet-18-style)"
+    character = "AI training: convolutions, memory grows with batch, GPU-class"
+    sizes = [64, 128, 256, 384, 512, 768, 1024, 1536, 2048]
+    test_size = 384
+    size_unit = "images per step (112×112, ResNet-18-style)"
+    tolerance = 6e-2
+    widths, image, classes = (64, 128, 256, 512), 112, 100
+    gpu_class = True
+
+    def setup(self, n, shard, nshards, device, dtype):
+        g = _gen(SEED + 12)
+
+        def conv(cin, cout, k):
+            t = torch.randn(cout, cin, k, k, generator=g) * math.sqrt(2.0 / (cin * k * k))
+            return t.to(device, dtype).requires_grad_()
+
+        p = {"stem": conv(3, self.widths[0], 7), "stages": []}
+        cin = self.widths[0]
+        for i, c in enumerate(self.widths):
+            blocks = []
+            for j in range(2):
+                stride = 2 if (j == 0 and i > 0) else 1
+                blk = {"c1": conv(cin, c, 3), "c2": conv(c, c, 3), "stride": stride}
+                if stride != 1 or cin != c:
+                    blk["proj"] = conv(cin, c, 1)
+                blocks.append(blk)
+                cin = c
+            p["stages"].append(blocks)
+        p["fc"] = (torch.randn(cin, self.classes, generator=g) / math.sqrt(cin)).to(device, dtype).requires_grad_()
+        x = torch.randn(n, 3, self.image, self.image, generator=g)
+        y = torch.randint(0, self.classes, (n,), generator=g)
+        lo, hi = _rows(n, shard, nshards)
+        return {"p": p, "x": x[lo:hi].to(device, dtype), "y": y[lo:hi].to(device)}
+
+    def _all(self, p):
+        out = [p["stem"]]
+        for blocks in p["stages"]:
+            for b in blocks:
+                out += [b["c1"], b["c2"]] + ([b["proj"]] if "proj" in b else [])
+        return out + [p["fc"]]
+
+    def run(self, inp):
+        F = torch.nn.functional
+        p = inp["p"]
+        params = self._all(p)
+        for t in params:
+            t.grad = None
+
+        def norm(t):
+            return F.group_norm(t, 8)
+
+        h = F.max_pool2d(F.relu(norm(F.conv2d(inp["x"], p["stem"], stride=2, padding=3))), 3, 2, 1)
+        for blocks in p["stages"]:
+            for b in blocks:
+                out = F.relu(norm(F.conv2d(h, b["c1"], stride=b["stride"], padding=1)))
+                out = norm(F.conv2d(out, b["c2"], padding=1))
+                skip = norm(F.conv2d(h, b["proj"], stride=b["stride"])) if "proj" in b else h
+                h = F.relu(out + skip)
+        logits = h.mean((2, 3)) @ p["fc"]
+        loss = F.cross_entropy(logits.float(), inp["y"], reduction="sum")
+        loss.backward()
+        return _grad_probe(params)
+
+    def combine(self, parts, n):
+        return torch.stack(parts).sum(0) / n
+
+    def work(self, n):
+        return 3 * 0.46e9 * n  # ~0.46 GFLOP forward per 112×112 image (ResNet-18 at a quarter of 224² pixels)
+
+    def memory_gb(self, n, precision="fp32", nshards=1):
+        bw = _bytes(precision)
+        per_image = 1.6e6  # saved activation values per 112×112 image across the network (convs + norms + relus)
+        return (2 * 11.2e6 * bw * nshards + n * per_image * bw) / 2 ** 30
+
+
+KERNELS = {k.name: k for k in (GEMM(), FFT3D(), Stencil3D(), SpMV(), NBody(), MonteCarlo(), MLTrain(), Server(),
+                               LLMTrain(), CNNTrain())}
 
 
 # ---------------------------------------------------------------------------
