@@ -55,7 +55,13 @@ def _cpu_skip(engine, kern, size, cfg, probes):
     """For GPU-class workloads only: why to skip a CPU setting, or None to measure it.
     probes[precision] = (size, seconds) of a measured all-cores CPU run at this or a
     smaller size; a setting with fewer cores is expected to be proportionally slower."""
-    if cfg["gpu"] or not getattr(kern, "gpu_class", False) or cfg["precision"] not in probes:
+    if cfg["gpu"] or not getattr(kern, "gpu_class", False):
+        return None
+    if cfg["precision"] == "bf16" and engine.hardware.get("gpu_model"):
+        # CPUs without a fast bf16 path take minutes per training step (74-151 s on the laptop's i5 at the
+        # smallest size); on a machine with a GPU nobody would run this, so it is not worth measuring
+        return "skipped: bf16 training on the CPU of a GPU machine (minutes per step; measured 74-151 s on an i5)"
+    if cfg["precision"] not in probes:
         return None
     psize, psec = probes[cfg["precision"]]
     cores = engine.hardware["cpu_threads"]
