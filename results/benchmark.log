@@ -15,7 +15,7 @@ training out-of-fold learned models ...
   60/72 problems (350s)
   72/72 problems (401s)
 
-% of best after N real runs (geometric mean over 72 problems), runs used, tuning cost:
+% of best after N real runs (geometric mean over 90 problems), runs used, tuning cost:
 method              @1      @2      @3      @5     @10   reach5%  med.runs  runs  core-h  gpu-h
 default            4.3     4.3     4.3     4.3     4.3        0%         -   1.0   0.007   0.000
 rules              4.3    47.6    70.7    80.5    80.5       33%       3.0   3.4   0.011   0.002

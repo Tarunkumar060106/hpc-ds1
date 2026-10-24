@@ -3,7 +3,7 @@
     "name": "HPC-DS1",
     "version": "1.0",
     "size": "small",
-    "parameters": 585995,
+    "parameters": 586251,
     "hparams": {
       "dim": 128,
       "encoder_blocks": 1,
@@ -19,13 +19,15 @@
         "nbody",
         "montecarlo",
         "mltrain",
-        "server"
+        "server",
+        "llm_train",
+        "cnn_train"
       ]
     },
-    "temperature": 0.2,
+    "temperature": 0.2581,
     "device": "cuda",
-    "trained_at": "2026-10-11T07:46:00+00:00",
-    "train_time_sec": 30.9
+    "trained_at": "2026-10-24T01:24:12+00:00",
+    "train_time_sec": 29.0
   },
   "hardware": {
     "name": "LAPTOP-PJUEH9UD",
@@ -38,9 +40,9 @@
     "gpu_memory_gb": 6.0
   },
   "dataset": {
-    "measurements": 3168,
-    "ok_and_correct": 2589,
-    "failed_or_wrong": 579,
+    "measurements": 3917,
+    "ok_and_correct": 2942,
+    "failed_or_wrong": 975,
     "failures": [
       {
         "problem": "fft:64",
@@ -283,19 +285,19 @@
         "reason": "RuntimeError: NotImplementedError: \"addmv_out_sparse_csr_impl_mkl\" not implemented for 'BFloat16'"
       }
     ],
-    "states": 2589,
-    "train": 1958,
-    "val": 345,
-    "test": 286,
+    "states": 2942,
+    "train": 2215,
+    "val": 390,
+    "test": 337,
     "label_distribution": {
-      "USE_GPU": 1035,
-      "STOP_TUNING": 549,
-      "ADD_THREADS": 327,
-      "ADD_RANKS": 293,
-      "USE_BF16": 176,
-      "USE_FP32": 143,
-      "REMOVE_RANKS": 35,
-      "REMOVE_THREADS": 30,
+      "USE_GPU": 1148,
+      "STOP_TUNING": 633,
+      "ADD_THREADS": 380,
+      "ADD_RANKS": 295,
+      "USE_BF16": 259,
+      "USE_FP32": 148,
+      "REMOVE_RANKS": 44,
+      "REMOVE_THREADS": 34,
       "USE_CPU": 1
     }
   },
@@ -310,13 +312,13 @@
         "ffn_dim": 256,
         "dropout": 0.1
       },
-      "parameters": 99659,
-      "best_epoch": 47,
-      "epochs_run": 87,
-      "val_loss": 0.94645,
-      "val_acc": 0.92174,
-      "train_time_sec": 33.0,
-      "test_acc": 0.9441
+      "parameters": 99787,
+      "best_epoch": 35,
+      "epochs_run": 75,
+      "val_loss": 0.95891,
+      "val_acc": 0.91026,
+      "train_time_sec": 23.7,
+      "test_acc": 0.9525
     },
     {
       "size": "small",
@@ -328,13 +330,13 @@
         "ffn_dim": 512,
         "dropout": 0.1
       },
-      "parameters": 585995,
-      "best_epoch": 27,
-      "epochs_run": 67,
-      "val_loss": 0.94303,
-      "val_acc": 0.91884,
-      "train_time_sec": 30.9,
-      "test_acc": 0.9406
+      "parameters": 586251,
+      "best_epoch": 34,
+      "epochs_run": 74,
+      "val_loss": 0.95459,
+      "val_acc": 0.91795,
+      "train_time_sec": 29.0,
+      "test_acc": 0.9496
     },
     {
       "size": "medium",
@@ -346,20 +348,22 @@
         "ffn_dim": 1024,
         "dropout": 0.15
       },
-      "parameters": 2847243,
-      "best_epoch": 39,
-      "epochs_run": 79,
-      "val_loss": 0.95606,
-      "val_acc": 0.90725,
-      "train_time_sec": 41.8,
-      "test_acc": 0.9371
+      "parameters": 2847755,
+      "best_epoch": 37,
+      "epochs_run": 77,
+      "val_loss": 0.96876,
+      "val_acc": 0.92051,
+      "train_time_sec": 34.8,
+      "test_acc": 0.9496
     }
   ],
   "metrics": {
-    "test_states": 286,
+    "test_states": 337,
     "test_problems": [
+      "cnn_train:384",
       "fft:192",
       "gemm:2048",
+      "llm_train:24",
       "mltrain:4096",
       "montecarlo:8000000",
       "nbody:4096",
@@ -367,143 +371,153 @@
       "spmv:800000",
       "stencil:160"
     ],
-    "accuracy": 0.9406,
-    "exact_label_accuracy": 0.6678,
+    "accuracy": 0.9496,
+    "exact_label_accuracy": 0.7211,
     "accuracy_definition": "chosen move can reach within 2% of the best runtime reachable from this state",
-    "rules_accuracy": 0.7028,
+    "rules_accuracy": 0.7478,
     "majority_class": "USE_GPU",
-    "majority_accuracy": 0.5105,
-    "temperature": 0.2,
-    "ece_raw": 0.3674,
-    "ece": 0.1056,
+    "majority_accuracy": 0.5252,
+    "temperature": 0.2581,
+    "ece_raw": 0.3588,
+    "ece": 0.136,
     "reliability": [
       {
         "lo": 0.3,
         "hi": 0.4,
-        "count": 1,
-        "accuracy": 0.0,
-        "confidence": 0.3935
+        "count": 5,
+        "accuracy": 0.8,
+        "confidence": 0.3788
       },
       {
         "lo": 0.4,
         "hi": 0.5,
-        "count": 5,
-        "accuracy": 1.0,
-        "confidence": 0.4596
+        "count": 26,
+        "accuracy": 0.9231,
+        "confidence": 0.4649
       },
       {
         "lo": 0.5,
         "hi": 0.6,
-        "count": 25,
-        "accuracy": 0.84,
-        "confidence": 0.5464
+        "count": 42,
+        "accuracy": 0.9524,
+        "confidence": 0.5511
       },
       {
         "lo": 0.6,
         "hi": 0.7,
         "count": 31,
-        "accuracy": 0.871,
-        "confidence": 0.653
+        "accuracy": 0.9677,
+        "confidence": 0.6564
       },
       {
         "lo": 0.7,
         "hi": 0.8,
-        "count": 36,
-        "accuracy": 0.9167,
-        "confidence": 0.7449
+        "count": 30,
+        "accuracy": 0.8333,
+        "confidence": 0.7482
       },
       {
         "lo": 0.8,
         "hi": 0.9,
-        "count": 34,
-        "accuracy": 1.0,
-        "confidence": 0.8513
+        "count": 26,
+        "accuracy": 0.8846,
+        "confidence": 0.8537
       },
       {
         "lo": 0.9,
         "hi": 1.0,
-        "count": 154,
-        "accuracy": 0.9675,
-        "confidence": 0.979
+        "count": 177,
+        "accuracy": 0.9831,
+        "confidence": 0.972
       }
     ],
     "escalation_curve": [
       {
         "threshold": 0.0,
         "coverage": 1.0,
-        "auto_accuracy": 0.9406,
-        "auto_regret_pct": 0.23
+        "auto_accuracy": 0.9496,
+        "auto_regret_pct": 0.6
       },
       {
         "threshold": 0.3,
         "coverage": 1.0,
-        "auto_accuracy": 0.9406,
-        "auto_regret_pct": 0.23
+        "auto_accuracy": 0.9496,
+        "auto_regret_pct": 0.6
       },
       {
         "threshold": 0.5,
-        "coverage": 0.979,
-        "auto_accuracy": 0.9429,
-        "auto_regret_pct": 0.22
+        "coverage": 0.908,
+        "auto_accuracy": 0.9542,
+        "auto_regret_pct": 0.63
       },
       {
         "threshold": 0.6,
-        "coverage": 0.8916,
-        "auto_accuracy": 0.9529,
-        "auto_regret_pct": 0.17
+        "coverage": 0.7834,
+        "auto_accuracy": 0.9545,
+        "auto_regret_pct": 0.75
       },
       {
         "threshold": 0.7,
-        "coverage": 0.7832,
-        "auto_accuracy": 0.9643,
-        "auto_regret_pct": 0.18
+        "coverage": 0.6914,
+        "auto_accuracy": 0.9528,
+        "auto_regret_pct": 0.76
       },
       {
         "threshold": 0.8,
-        "coverage": 0.6573,
-        "auto_accuracy": 0.9734,
-        "auto_regret_pct": -0.02
+        "coverage": 0.6024,
+        "auto_accuracy": 0.9704,
+        "auto_regret_pct": 0.72
       },
       {
         "threshold": 0.85,
-        "coverage": 0.5944,
-        "auto_accuracy": 0.9706,
-        "auto_regret_pct": 0.14
+        "coverage": 0.5638,
+        "auto_accuracy": 0.9737,
+        "auto_regret_pct": 0.68
       },
       {
         "threshold": 0.9,
-        "coverage": 0.5385,
-        "auto_accuracy": 0.9675,
-        "auto_regret_pct": 0.15
+        "coverage": 0.5252,
+        "auto_accuracy": 0.9831,
+        "auto_regret_pct": 0.33
       },
       {
         "threshold": 0.95,
-        "coverage": 0.4615,
-        "auto_accuracy": 0.9773,
-        "auto_regret_pct": 0.42
+        "coverage": 0.365,
+        "auto_accuracy": 0.9837,
+        "auto_regret_pct": 0.38
       },
       {
         "threshold": 0.99,
-        "coverage": 0.2413,
-        "auto_accuracy": 0.9855,
-        "auto_regret_pct": 0.1
+        "coverage": 0.27,
+        "auto_accuracy": 0.989,
+        "auto_regret_pct": 0.08
       }
     ],
     "per_workload": {
+      "cnn_train": {
+        "correct": 27,
+        "total": 27,
+        "accuracy": 1.0
+      },
       "fft": {
-        "correct": 20,
+        "correct": 22,
         "total": 22,
-        "accuracy": 0.9091
+        "accuracy": 1.0
       },
       "gemm": {
-        "correct": 40,
+        "correct": 39,
         "total": 44,
-        "accuracy": 0.9091
+        "accuracy": 0.8864
+      },
+      "llm_train": {
+        "correct": 24,
+        "total": 24,
+        "accuracy": 1.0
       },
       "mltrain": {
-        "correct": 43,
+        "correct": 42,
         "total": 44,
-        "accuracy": 0.9773
+        "accuracy": 0.9545
       },
       "montecarlo": {
         "correct": 40,
@@ -516,9 +530,9 @@
         "accuracy": 0.9318
       },
       "server": {
-        "correct": 16,
+        "correct": 15,
         "total": 17,
-        "accuracy": 0.9412
+        "accuracy": 0.8824
       },
       "spmv": {
         "correct": 26,
@@ -526,142 +540,142 @@
         "accuracy": 0.963
       },
       "stencil": {
-        "correct": 43,
+        "correct": 44,
         "total": 44,
-        "accuracy": 0.9773
+        "accuracy": 1.0
       }
     },
     "confusion": [
       [
-        33,
+        26,
         0,
-        0,
-        0,
+        4,
+        1,
         1,
         0,
-        0,
-        0,
-        0
-      ],
-      [
         0,
         2,
-        1,
+        0
+      ],
+      [
         0,
         1,
+        1,
+        0,
+        6,
         0,
         1,
         0,
         0
       ],
       [
-        13,
-        3,
-        19,
-        0,
         11,
         0,
+        21,
+        0,
+        24,
+        0,
         2,
+        3,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
         0,
         1
       ],
       [
-        1,
-        0,
-        0,
-        3,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        11,
         6,
-        4,
-        0,
-        62,
-        0,
-        9,
-        2,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        26,
-        0,
-        0
-      ],
-      [
-        19,
-        0,
+        1,
         2,
         0,
+        82,
+        0,
+        7,
+        11,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        36,
+        0,
+        0
+      ],
+      [
         3,
         0,
+        2,
+        0,
+        1,
         0,
         0,
+        18,
         0
       ],
       [
         0,
         0,
         1,
+        0,
+        0,
+        0,
         2,
         0,
-        0,
-        1,
-        0,
-        46
+        57
       ]
     ],
     "regret_model": {
-      "mean_regret_pct": 0.23,
-      "worst_regret_x": 1.46,
+      "mean_regret_pct": 0.6,
+      "worst_regret_x": 1.97,
       "median_regret_pct": 0.0,
-      "within_5pct_of_best_pct": 97.9,
-      "made_slower_pct": 0.0,
+      "within_5pct_of_best_pct": 97.6,
+      "made_slower_pct": 0.3,
       "picked_failing_config_pct": 0.0
     },
     "regret_rules": {
-      "mean_regret_pct": 8.36,
+      "mean_regret_pct": 7.06,
       "worst_regret_x": 6.51,
       "median_regret_pct": 0.0,
-      "within_5pct_of_best_pct": 79.4,
-      "made_slower_pct": 5.6,
-      "picked_failing_config_pct": 7.7
+      "within_5pct_of_best_pct": 82.5,
+      "made_slower_pct": 4.7,
+      "picked_failing_config_pct": 6.5
     },
-    "stop_head_accuracy": 0.986,
-    "improvement_mae": 0.0379,
+    "stop_head_accuracy": 0.9822,
+    "improvement_mae": 0.0313,
     "ensemble": {
       "members": 1,
       "candidates": 5,
       "val_single": {
-        "loss": 0.94303,
-        "acc": 0.9188,
-        "ece": 0.0764
+        "loss": 0.95459,
+        "acc": 0.9179,
+        "ece": 0.1102
       },
       "val_ensemble": {
-        "loss": 0.93201,
-        "acc": 0.9362,
-        "ece": 0.0985
+        "loss": 0.93993,
+        "acc": 0.9282,
+        "ece": 0.1142
       }
     }
   },
@@ -669,38 +683,47 @@
     "summary": [
       {
         "policy": "HPC-DS1 (autonomous)",
-        "sessions": 286,
-        "geo_mean_speedup": 13.644,
-        "pct_of_best_config": 96.3,
-        "sessions_within_10pct_of_best": 86.4,
-        "mean_experiments": 2.89
+        "sessions": 337,
+        "geo_mean_speedup": 13.364,
+        "pct_of_best_config": 95.6,
+        "sessions_within_10pct_of_best": 89.0,
+        "mean_experiments": 2.86
       },
       {
         "policy": "Rules of thumb",
-        "sessions": 286,
-        "geo_mean_speedup": 12.761,
-        "pct_of_best_config": 90.1,
-        "sessions_within_10pct_of_best": 67.1,
+        "sessions": 337,
+        "geo_mean_speedup": 12.786,
+        "pct_of_best_config": 91.5,
+        "sessions_within_10pct_of_best": 72.1,
         "mean_experiments": 2.44
       },
       {
         "policy": "Random moves (8)",
-        "sessions": 286,
-        "geo_mean_speedup": 11.654,
-        "pct_of_best_config": 82.3,
-        "sessions_within_10pct_of_best": 75.9,
-        "mean_experiments": 8.37
+        "sessions": 337,
+        "geo_mean_speedup": 11.675,
+        "pct_of_best_config": 83.5,
+        "sessions_within_10pct_of_best": 78.6,
+        "mean_experiments": 8.26
       },
       {
         "policy": "Greedy search (tries all neighbours)",
-        "sessions": 286,
-        "geo_mean_speedup": 13.423,
-        "pct_of_best_config": 94.8,
-        "sessions_within_10pct_of_best": 86.7,
-        "mean_experiments": 10.74
+        "sessions": 337,
+        "geo_mean_speedup": 13.346,
+        "pct_of_best_config": 95.5,
+        "sessions_within_10pct_of_best": 88.7,
+        "mean_experiments": 10.72
       }
     ],
     "per_problem": [
+      {
+        "workload": "cnn_train",
+        "size": 384,
+        "starts": 27,
+        "HPC-DS1 (autonomous)": 99.8,
+        "Rules of thumb": 99.8,
+        "Random moves (8)": 83.9,
+        "Greedy search (tries all neighbours)": 99.8
+      },
       {
         "workload": "fft",
         "size": 192,
@@ -720,10 +743,19 @@
         "Greedy search (tries all neighbours)": 97.9
       },
       {
+        "workload": "llm_train",
+        "size": 24,
+        "starts": 24,
+        "HPC-DS1 (autonomous)": 100.0,
+        "Rules of thumb": 100.0,
+        "Random moves (8)": 100.0,
+        "Greedy search (tries all neighbours)": 100.0
+      },
+      {
         "workload": "mltrain",
         "size": 4096,
         "starts": 44,
-        "HPC-DS1 (autonomous)": 96.7,
+        "HPC-DS1 (autonomous)": 99.5,
         "Rules of thumb": 95.0,
         "Random moves (8)": 73.5,
         "Greedy search (tries all neighbours)": 99.5
@@ -741,7 +773,7 @@
         "workload": "nbody",
         "size": 4096,
         "starts": 44,
-        "HPC-DS1 (autonomous)": 98.5,
+        "HPC-DS1 (autonomous)": 97.9,
         "Rules of thumb": 94.8,
         "Random moves (8)": 87.8,
         "Greedy search (tries all neighbours)": 98.6
@@ -750,7 +782,7 @@
         "workload": "server",
         "size": 4000,
         "starts": 17,
-        "HPC-DS1 (autonomous)": 100.0,
+        "HPC-DS1 (autonomous)": 69.4,
         "Rules of thumb": 56.6,
         "Random moves (8)": 67.0,
         "Greedy search (tries all neighbours)": 75.2
@@ -759,7 +791,7 @@
         "workload": "spmv",
         "size": 800000,
         "starts": 27,
-        "HPC-DS1 (autonomous)": 98.6,
+        "HPC-DS1 (autonomous)": 98.5,
         "Rules of thumb": 98.5,
         "Random moves (8)": 98.4,
         "Greedy search (tries all neighbours)": 98.5
@@ -768,7 +800,7 @@
         "workload": "stencil",
         "size": 160,
         "starts": 44,
-        "HPC-DS1 (autonomous)": 96.8,
+        "HPC-DS1 (autonomous)": 99.2,
         "Rules of thumb": 95.3,
         "Random moves (8)": 72.5,
         "Greedy search (tries all neighbours)": 99.1
@@ -776,628 +808,5 @@
     ],
     "max_steps": 8
   },
-  "live": [
-    {
-      "workload": "fft",
-      "size": 192,
-      "initial_config": {
-        "ranks": 4,
-        "threads": 1,
-        "gpu": false,
-        "precision": "fp32"
-      },
-      "final_config": {
-        "ranks": 1,
-        "threads": 4,
-        "gpu": true,
-        "precision": "fp32"
-      },
-      "initial_runtime": 0.084504,
-      "final_runtime": 0.008042,
-      "experiments": 6,
-      "escalations": 0,
-      "stopped_reason": "model_stop",
-      "steps": [
-        {
-          "step": 0,
-          "action": "REMOVE_RANKS",
-          "confidence": 0.57983,
-          "escalated": false,
-          "runtime_before": 0.084504,
-          "runtime_after": 0.080856,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 1,
-          "action": "ADD_THREADS",
-          "confidence": 0.54279,
-          "escalated": false,
-          "runtime_before": 0.080856,
-          "runtime_after": 0.064218,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 2,
-          "action": "REMOVE_RANKS",
-          "confidence": 0.97407,
-          "escalated": false,
-          "runtime_before": 0.064218,
-          "runtime_after": 0.042257,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 3,
-          "action": "ADD_THREADS",
-          "confidence": 0.99833,
-          "escalated": false,
-          "runtime_before": 0.042257,
-          "runtime_after": 0.021656,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 4,
-          "action": "USE_GPU",
-          "confidence": 0.93494,
-          "escalated": false,
-          "runtime_before": 0.021656,
-          "runtime_after": 0.008042,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 5,
-          "action": "STOP_TUNING",
-          "confidence": 0.98363,
-          "escalated": false,
-          "runtime_before": 0.008042,
-          "runtime_after": null,
-          "accepted": true,
-          "note": ""
-        }
-      ],
-      "speedup": 10.5078,
-      "best_known_config": {
-        "ranks": 1,
-        "threads": 16,
-        "gpu": true,
-        "precision": "fp32"
-      },
-      "best_known_runtime_now": 0.009185,
-      "final_runtime_now": 0.008048,
-      "pct_of_best_measured": 114.1,
-      "wall_sec": 7.6
-    },
-    {
-      "workload": "gemm",
-      "size": 2048,
-      "initial_config": {
-        "ranks": 2,
-        "threads": 2,
-        "gpu": false,
-        "precision": "bf16"
-      },
-      "final_config": {
-        "ranks": 1,
-        "threads": 2,
-        "gpu": true,
-        "precision": "bf16"
-      },
-      "initial_runtime": 22.51247,
-      "final_runtime": 0.01875,
-      "experiments": 4,
-      "escalations": 0,
-      "stopped_reason": "model_stop",
-      "steps": [
-        {
-          "step": 0,
-          "action": "ADD_RANKS",
-          "confidence": 0.60387,
-          "escalated": false,
-          "runtime_before": 22.51247,
-          "runtime_after": 13.950204,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 1,
-          "action": "ADD_RANKS",
-          "confidence": 0.57607,
-          "escalated": false,
-          "runtime_before": 13.950204,
-          "runtime_after": 14.017681,
-          "accepted": false,
-          "note": ""
-        },
-        {
-          "step": 2,
-          "action": "USE_GPU",
-          "confidence": 0.77394,
-          "escalated": false,
-          "runtime_before": 13.950204,
-          "runtime_after": 0.01875,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 3,
-          "action": "STOP_TUNING",
-          "confidence": 0.97623,
-          "escalated": false,
-          "runtime_before": 0.01875,
-          "runtime_after": null,
-          "accepted": true,
-          "note": ""
-        }
-      ],
-      "speedup": 1200.6651,
-      "best_known_config": {
-        "ranks": 1,
-        "threads": 4,
-        "gpu": true,
-        "precision": "bf16"
-      },
-      "best_known_runtime_now": 0.00271,
-      "final_runtime_now": 0.003024,
-      "pct_of_best_measured": 89.6,
-      "wall_sec": 51.5
-    },
-    {
-      "workload": "mltrain",
-      "size": 4096,
-      "initial_config": {
-        "ranks": 2,
-        "threads": 8,
-        "gpu": false,
-        "precision": "bf16"
-      },
-      "final_config": {
-        "ranks": 1,
-        "threads": 8,
-        "gpu": true,
-        "precision": "bf16"
-      },
-      "initial_runtime": 8.769101,
-      "final_runtime": 0.002784,
-      "experiments": 3,
-      "escalations": 0,
-      "stopped_reason": "model_stop",
-      "steps": [
-        {
-          "step": 0,
-          "action": "ADD_RANKS",
-          "confidence": 0.75421,
-          "escalated": false,
-          "runtime_before": 8.769101,
-          "runtime_after": 5.046187,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 1,
-          "action": "USE_GPU",
-          "confidence": 0.90806,
-          "escalated": false,
-          "runtime_before": 5.046187,
-          "runtime_after": 0.002784,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 2,
-          "action": "STOP_TUNING",
-          "confidence": 0.97567,
-          "escalated": false,
-          "runtime_before": 0.002784,
-          "runtime_after": null,
-          "accepted": true,
-          "note": ""
-        }
-      ],
-      "speedup": 3149.8208,
-      "best_known_config": {
-        "ranks": 1,
-        "threads": 8,
-        "gpu": true,
-        "precision": "bf16"
-      },
-      "best_known_runtime_now": 0.002458,
-      "final_runtime_now": 0.002348,
-      "pct_of_best_measured": 104.7,
-      "wall_sec": 14.6
-    },
-    {
-      "workload": "montecarlo",
-      "size": 8000000,
-      "initial_config": {
-        "ranks": 1,
-        "threads": 1,
-        "gpu": false,
-        "precision": "fp32"
-      },
-      "final_config": {
-        "ranks": 8,
-        "threads": 2,
-        "gpu": false,
-        "precision": "fp32"
-      },
-      "initial_runtime": 1.190079,
-      "final_runtime": 0.265394,
-      "experiments": 5,
-      "escalations": 0,
-      "stopped_reason": "model_stop",
-      "steps": [
-        {
-          "step": 0,
-          "action": "ADD_RANKS",
-          "confidence": 0.90503,
-          "escalated": false,
-          "runtime_before": 1.190079,
-          "runtime_after": 0.661403,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 1,
-          "action": "ADD_RANKS",
-          "confidence": 0.60944,
-          "escalated": false,
-          "runtime_before": 0.661403,
-          "runtime_after": 0.439103,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 2,
-          "action": "ADD_THREADS",
-          "confidence": 0.8929,
-          "escalated": false,
-          "runtime_before": 0.439103,
-          "runtime_after": 0.37175,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 3,
-          "action": "ADD_RANKS",
-          "confidence": 1.0,
-          "escalated": false,
-          "runtime_before": 0.37175,
-          "runtime_after": 0.265394,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 4,
-          "action": "STOP_TUNING",
-          "confidence": 0.65409,
-          "escalated": false,
-          "runtime_before": 0.265394,
-          "runtime_after": null,
-          "accepted": true,
-          "note": ""
-        }
-      ],
-      "speedup": 4.4842,
-      "best_known_config": {
-        "ranks": 8,
-        "threads": 2,
-        "gpu": false,
-        "precision": "fp32"
-      },
-      "best_known_runtime_now": 0.264077,
-      "final_runtime_now": 0.265203,
-      "pct_of_best_measured": 99.6,
-      "wall_sec": 16.1
-    },
-    {
-      "workload": "nbody",
-      "size": 4096,
-      "initial_config": {
-        "ranks": 1,
-        "threads": 2,
-        "gpu": false,
-        "precision": "fp32"
-      },
-      "final_config": {
-        "ranks": 1,
-        "threads": 8,
-        "gpu": true,
-        "precision": "bf16"
-      },
-      "initial_runtime": 0.632662,
-      "final_runtime": 0.00333,
-      "experiments": 6,
-      "escalations": 0,
-      "stopped_reason": "model_stop",
-      "steps": [
-        {
-          "step": 0,
-          "action": "ADD_RANKS",
-          "confidence": 0.62841,
-          "escalated": false,
-          "runtime_before": 0.632662,
-          "runtime_after": 0.352865,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 1,
-          "action": "ADD_THREADS",
-          "confidence": 0.49447,
-          "escalated": false,
-          "runtime_before": 0.352865,
-          "runtime_after": 0.22849,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 2,
-          "action": "ADD_THREADS",
-          "confidence": 0.42499,
-          "escalated": false,
-          "runtime_before": 0.22849,
-          "runtime_after": 0.130506,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 3,
-          "action": "USE_GPU",
-          "confidence": 0.98472,
-          "escalated": false,
-          "runtime_before": 0.130506,
-          "runtime_after": 0.006335,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 4,
-          "action": "USE_BF16",
-          "confidence": 1.0,
-          "escalated": false,
-          "runtime_before": 0.006335,
-          "runtime_after": 0.00333,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 5,
-          "action": "STOP_TUNING",
-          "confidence": 0.97504,
-          "escalated": false,
-          "runtime_before": 0.00333,
-          "runtime_after": null,
-          "accepted": true,
-          "note": ""
-        }
-      ],
-      "speedup": 189.9886,
-      "best_known_config": {
-        "ranks": 1,
-        "threads": 16,
-        "gpu": true,
-        "precision": "bf16"
-      },
-      "best_known_runtime_now": 0.003384,
-      "final_runtime_now": 0.003315,
-      "pct_of_best_measured": 102.1,
-      "wall_sec": 7.1
-    },
-    {
-      "workload": "server",
-      "size": 4000,
-      "initial_config": {
-        "ranks": 1,
-        "threads": 1,
-        "gpu": false,
-        "precision": "fp32"
-      },
-      "final_config": {
-        "ranks": 8,
-        "threads": 1,
-        "gpu": false,
-        "precision": "fp32"
-      },
-      "initial_runtime": 0.290107,
-      "final_runtime": 0.061988,
-      "experiments": 4,
-      "escalations": 0,
-      "stopped_reason": "model_stop",
-      "steps": [
-        {
-          "step": 0,
-          "action": "ADD_RANKS",
-          "confidence": 1.0,
-          "escalated": false,
-          "runtime_before": 0.290107,
-          "runtime_after": 0.150085,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 1,
-          "action": "ADD_RANKS",
-          "confidence": 1.0,
-          "escalated": false,
-          "runtime_before": 0.150085,
-          "runtime_after": 0.102889,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 2,
-          "action": "ADD_RANKS",
-          "confidence": 1.0,
-          "escalated": false,
-          "runtime_before": 0.102889,
-          "runtime_after": 0.061988,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 3,
-          "action": "STOP_TUNING",
-          "confidence": 0.99347,
-          "escalated": false,
-          "runtime_before": 0.061988,
-          "runtime_after": null,
-          "accepted": true,
-          "note": ""
-        }
-      ],
-      "speedup": 4.6801,
-      "best_known_config": {
-        "ranks": 8,
-        "threads": 1,
-        "gpu": false,
-        "precision": "fp32"
-      },
-      "best_known_runtime_now": 0.060721,
-      "final_runtime_now": 0.060952,
-      "pct_of_best_measured": 99.6,
-      "wall_sec": 6.2
-    },
-    {
-      "workload": "spmv",
-      "size": 800000,
-      "initial_config": {
-        "ranks": 2,
-        "threads": 2,
-        "gpu": false,
-        "precision": "fp32"
-      },
-      "final_config": {
-        "ranks": 1,
-        "threads": 4,
-        "gpu": true,
-        "precision": "bf16"
-      },
-      "initial_runtime": 0.195156,
-      "final_runtime": 0.008399,
-      "experiments": 4,
-      "escalations": 0,
-      "stopped_reason": "model_stop",
-      "steps": [
-        {
-          "step": 0,
-          "action": "ADD_THREADS",
-          "confidence": 0.6038,
-          "escalated": false,
-          "runtime_before": 0.195156,
-          "runtime_after": 0.132613,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 1,
-          "action": "USE_GPU",
-          "confidence": 0.66921,
-          "escalated": false,
-          "runtime_before": 0.132613,
-          "runtime_after": 0.011237,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 2,
-          "action": "USE_BF16",
-          "confidence": 1.0,
-          "escalated": false,
-          "runtime_before": 0.011237,
-          "runtime_after": 0.008399,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 3,
-          "action": "STOP_TUNING",
-          "confidence": 0.97373,
-          "escalated": false,
-          "runtime_before": 0.008399,
-          "runtime_after": null,
-          "accepted": true,
-          "note": ""
-        }
-      ],
-      "speedup": 23.2356,
-      "best_known_config": {
-        "ranks": 1,
-        "threads": 16,
-        "gpu": true,
-        "precision": "bf16"
-      },
-      "best_known_runtime_now": 0.008282,
-      "final_runtime_now": 0.009704,
-      "pct_of_best_measured": 85.3,
-      "wall_sec": 3.3
-    },
-    {
-      "workload": "stencil",
-      "size": 160,
-      "initial_config": {
-        "ranks": 4,
-        "threads": 2,
-        "gpu": false,
-        "precision": "fp32"
-      },
-      "final_config": {
-        "ranks": 1,
-        "threads": 2,
-        "gpu": true,
-        "precision": "bf16"
-      },
-      "initial_runtime": 0.125748,
-      "final_runtime": 0.004426,
-      "experiments": 3,
-      "escalations": 0,
-      "stopped_reason": "model_stop",
-      "steps": [
-        {
-          "step": 0,
-          "action": "USE_BF16",
-          "confidence": 0.9789,
-          "escalated": false,
-          "runtime_before": 0.125748,
-          "runtime_after": 0.085589,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 1,
-          "action": "USE_GPU",
-          "confidence": 0.99797,
-          "escalated": false,
-          "runtime_before": 0.085589,
-          "runtime_after": 0.004426,
-          "accepted": true,
-          "note": ""
-        },
-        {
-          "step": 2,
-          "action": "STOP_TUNING",
-          "confidence": 0.96666,
-          "escalated": false,
-          "runtime_before": 0.004426,
-          "runtime_after": null,
-          "accepted": true,
-          "note": ""
-        }
-      ],
-      "speedup": 28.4112,
-      "best_known_config": {
-        "ranks": 1,
-        "threads": 4,
-        "gpu": true,
-        "precision": "bf16"
-      },
-      "best_known_runtime_now": 0.004865,
-      "final_runtime_now": 0.004415,
-      "pct_of_best_measured": 110.2,
-      "wall_sec": 1.9
-    }
-  ]
+  "live": []
 }

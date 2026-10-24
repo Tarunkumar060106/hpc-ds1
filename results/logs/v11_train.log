@@ -1,0 +1,31 @@
+3917 real measurements -> 2942 states over 89 problems (train 2215, val 390, test 337 on held-out sizes)
+label mix: USE_GPU 1148, STOP_TUNING 633, ADD_THREADS 380, ADD_RANKS 295, USE_BF16 259, USE_FP32 148, REMOVE_RANKS 44, REMOVE_THREADS 34, USE_CPU 1
+  tiny      99,787 params  val 0.9589/0.910  test acc 0.953  (75 epochs, 23.7s)
+  small    586,251 params  val 0.9546/0.918  test acc 0.950  (74 epochs, 29.0s)
+  medium 2,847,755 params  val 0.9688/0.921  test acc 0.950  (77 epochs, 34.8s)
+selected small on validation loss
+validation  single: loss 0.9546 acc 0.918 ECE 0.110  |  ensemble of 5: loss 0.9399 acc 0.928 ECE 0.114
+keeping the single network (ensemble not better on validation)
+
+picks a best move 0.950 (exact label 0.721; rules 0.748, majority 'USE_GPU' 0.525)  ECE 0.359 -> 0.136 (T=0.26)
+regret: model {'mean_regret_pct': 0.6, 'worst_regret_x': 1.97, 'median_regret_pct': 0.0, 'within_5pct_of_best_pct': 97.6, 'made_slower_pct': 0.3, 'picked_failing_config_pct': 0.0}
+        rules {'mean_regret_pct': 7.06, 'worst_regret_x': 6.51, 'median_regret_pct': 0.0, 'within_5pct_of_best_pct': 82.5, 'made_slower_pct': 4.7, 'picked_failing_config_pct': 6.5}
+  threshold 0.00: auto-run 100.0%  accuracy 0.9496
+  threshold 0.30: auto-run 100.0%  accuracy 0.9496
+  threshold 0.50: auto-run  90.8%  accuracy 0.9542
+  threshold 0.60: auto-run  78.3%  accuracy 0.9545
+  threshold 0.70: auto-run  69.1%  accuracy 0.9528
+  threshold 0.80: auto-run  60.2%  accuracy 0.9704
+  threshold 0.85: auto-run  56.4%  accuracy 0.9737
+  threshold 0.90: auto-run  52.5%  accuracy 0.9831
+  threshold 0.95: auto-run  36.5%  accuracy 0.9837
+  threshold 0.99: auto-run  27.0%  accuracy 0.989
+saved D:\Radiants\Projects\kairo\hpc_ds1\models\hpc_ds1.pt
+
+replaying tuning sessions on measured test problems ...
+  HPC-DS1 (autonomous)                   x13.364   95.6% of best config   2.86 runs
+  Rules of thumb                         x12.786   91.5% of best config   2.44 runs
+  Random moves (8)                       x11.675   83.5% of best config   8.26 runs
+  Greedy search (tries all neighbours)   x13.346   95.5% of best config  10.72 runs
+
+exported 26 traces -> hpc_ds1/ui/model_internals.json

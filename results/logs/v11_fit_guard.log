@@ -1,0 +1,15 @@
+guard attached to D:\Radiants\Projects\kairo\hpc_ds1\models\hpc_ds1.pt (radius 1.175, 2215 reference states)
+held-out sizes: guard flags 0/337 familiar states
+  without_guard  auto 56.4% confirm 34.4% escalate 9.2%  auto accuracy 0.9737  wrong auto-runs 5
+  with_guard     auto 56.4% confirm 34.4% escalate 9.2%  auto accuracy 0.9737  wrong auto-runs 5
+unseen gemm       flagged 100.0% (distance alone  13.6%)  confidently wrong auto-runs 59 -> 0
+unseen fft        flagged 100.0% (distance alone 100.0%)  confidently wrong auto-runs 16 -> 0
+unseen stencil    flagged 100.0% (distance alone  51.0%)  confidently wrong auto-runs 48 -> 0
+unseen spmv       flagged 100.0% (distance alone  63.0%)  confidently wrong auto-runs 17 -> 0
+unseen nbody      flagged 100.0% (distance alone  37.9%)  confidently wrong auto-runs 36 -> 0
+unseen montecarlo flagged 100.0% (distance alone  70.2%)  confidently wrong auto-runs 37 -> 0
+unseen mltrain    flagged 100.0% (distance alone  15.7%)  confidently wrong auto-runs 24 -> 0
+unseen server     flagged 100.0% (distance alone  41.2%)  confidently wrong auto-runs 61 -> 0
+unseen llm_train  flagged 100.0% (distance alone   4.8%)
+unseen cnn_train  flagged 100.0% (distance alone  17.9%)
+saved results/guard.json

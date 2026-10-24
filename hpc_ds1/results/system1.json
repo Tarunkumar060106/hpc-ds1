@@ -12,77 +12,71 @@
     "members": 8
   },
   "system1_cv": {
-    "problems": 72,
-    "pick_within_5pct": 0.8333,
-    "pct_of_best_speed": 96.9,
+    "problems": 89,
+    "pick_within_5pct": 0.8876,
+    "pct_of_best_speed": 97.7,
     "picked_failing_config": 0,
-    "confidence_ece_leave_one_out": 0.0556,
+    "confidence_ece_leave_one_out": 0.0132,
     "reliability": [
-      {
-        "lo": 0.6,
-        "hi": 0.7,
-        "count": 3,
-        "accuracy": 0.3333,
-        "confidence": 0.6458
-      },
-      {
-        "lo": 0.7,
-        "hi": 0.8,
-        "count": 11,
-        "accuracy": 0.8182,
-        "confidence": 0.7669
-      },
       {
         "lo": 0.8,
         "hi": 0.9,
-        "count": 48,
-        "accuracy": 0.875,
-        "confidence": 0.847
+        "count": 52,
+        "accuracy": 0.8654,
+        "confidence": 0.855
       },
       {
         "lo": 0.9,
         "hi": 1.0,
-        "count": 10,
-        "accuracy": 0.8,
-        "confidence": 0.9159
+        "count": 37,
+        "accuracy": 0.9189,
+        "confidence": 0.9361
       }
     ],
-    "confidence_auroc": 0.554,
-    "auto_share_at_085": 0.4028,
-    "auto_within_5pct": 0.8276,
-    "auto_pct_of_best": 97.6,
+    "confidence_auroc": 0.434,
+    "auto_share_at_085": 0.7978,
+    "auto_within_5pct": 0.8592,
+    "auto_pct_of_best": 97.4,
     "per_workload": {
       "gemm": {
         "within_5pct": 0.889,
         "pct_of_best": 97.1
       },
       "fft": {
-        "within_5pct": 0.667,
-        "pct_of_best": 93.5
+        "within_5pct": 0.778,
+        "pct_of_best": 93.2
       },
       "stencil": {
         "within_5pct": 0.889,
-        "pct_of_best": 98.4
+        "pct_of_best": 98.5
       },
       "spmv": {
         "within_5pct": 1.0,
-        "pct_of_best": 98.4
+        "pct_of_best": 98.6
       },
       "nbody": {
         "within_5pct": 0.778,
-        "pct_of_best": 95.6
+        "pct_of_best": 95.9
       },
       "montecarlo": {
         "within_5pct": 0.778,
-        "pct_of_best": 98.1
+        "pct_of_best": 98.4
       },
       "mltrain": {
-        "within_5pct": 0.667,
-        "pct_of_best": 94.5
+        "within_5pct": 0.778,
+        "pct_of_best": 96.4
       },
       "server": {
         "within_5pct": 1.0,
         "pct_of_best": 100.0
+      },
+      "llm_train": {
+        "within_5pct": 1.0,
+        "pct_of_best": 99.7
+      },
+      "cnn_train": {
+        "within_5pct": 1.0,
+        "pct_of_best": 99.8
       }
     }
   },
@@ -90,31 +84,46 @@
     "summary": [
       {
         "policy": "System 1 alone",
-        "pct_of_best": 98.7,
+        "pct_of_best": 98.8,
         "mean_runs": 1.0
       },
       {
         "policy": "System 1 -> System 2",
-        "pct_of_best": 98.7,
+        "pct_of_best": 98.8,
         "mean_runs": 1.0
       },
       {
         "policy": "Dual process (System 2 only when unsure)",
-        "pct_of_best": 98.7,
+        "pct_of_best": 98.8,
         "mean_runs": 1.0
       },
       {
         "policy": "System 2 alone, from 1x1 CPU fp32",
-        "pct_of_best": 99.1,
-        "mean_runs": 5.12
+        "pct_of_best": 99.4,
+        "mean_runs": 5.0
       },
       {
         "policy": "Rules of thumb, from 1x1 CPU fp32",
-        "pct_of_best": 88.1,
-        "mean_runs": 3.62
+        "pct_of_best": 90.3,
+        "mean_runs": 3.5
       }
     ],
     "per_problem": [
+      {
+        "workload": "cnn_train",
+        "size": 384,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 4,
+          "gpu": true,
+          "precision": "bf16"
+        },
+        "confidence": 0.951,
+        "system1_pct_of_best": 99.8,
+        "used_system2": false,
+        "dual_pct_of_best": 99.8,
+        "dual_runs": 1
+      },
       {
         "workload": "fft",
         "size": 192,
@@ -124,9 +133,9 @@
           "gpu": true,
           "precision": "fp32"
         },
-        "confidence": 0.741,
+        "confidence": 0.868,
         "system1_pct_of_best": 100.0,
-        "used_system2": true,
+        "used_system2": false,
         "dual_pct_of_best": 100.0,
         "dual_runs": 1
       },
@@ -139,10 +148,25 @@
           "gpu": true,
           "precision": "bf16"
         },
-        "confidence": 0.757,
+        "confidence": 0.825,
         "system1_pct_of_best": 96.7,
         "used_system2": true,
         "dual_pct_of_best": 96.7,
+        "dual_runs": 1
+      },
+      {
+        "workload": "llm_train",
+        "size": 24,
+        "system1_config": {
+          "ranks": 1,
+          "threads": 4,
+          "gpu": true,
+          "precision": "bf16"
+        },
+        "confidence": 0.964,
+        "system1_pct_of_best": 100.0,
+        "used_system2": false,
+        "dual_pct_of_best": 100.0,
         "dual_runs": 1
       },
       {
@@ -154,9 +178,9 @@
           "gpu": true,
           "precision": "bf16"
         },
-        "confidence": 0.833,
+        "confidence": 0.873,
         "system1_pct_of_best": 100.0,
-        "used_system2": true,
+        "used_system2": false,
         "dual_pct_of_best": 100.0,
         "dual_runs": 1
       },
@@ -169,7 +193,7 @@
           "gpu": false,
           "precision": "bf16"
         },
-        "confidence": 0.921,
+        "confidence": 0.962,
         "system1_pct_of_best": 95.1,
         "used_system2": false,
         "dual_pct_of_best": 95.1,
@@ -180,14 +204,14 @@
         "size": 4096,
         "system1_config": {
           "ranks": 1,
-          "threads": 16,
+          "threads": 8,
           "gpu": true,
           "precision": "bf16"
         },
-        "confidence": 0.814,
-        "system1_pct_of_best": 100.0,
+        "confidence": 0.838,
+        "system1_pct_of_best": 98.0,
         "used_system2": true,
-        "dual_pct_of_best": 100.0,
+        "dual_pct_of_best": 98.0,
         "dual_runs": 1
       },
       {
@@ -199,7 +223,7 @@
           "gpu": false,
           "precision": "fp32"
         },
-        "confidence": 0.914,
+        "confidence": 0.943,
         "system1_pct_of_best": 100.0,
         "used_system2": false,
         "dual_pct_of_best": 100.0,
@@ -214,7 +238,7 @@
           "gpu": true,
           "precision": "bf16"
         },
-        "confidence": 0.878,
+        "confidence": 0.904,
         "system1_pct_of_best": 98.5,
         "used_system2": false,
         "dual_pct_of_best": 98.5,
@@ -229,9 +253,9 @@
           "gpu": true,
           "precision": "bf16"
         },
-        "confidence": 0.793,
+        "confidence": 0.866,
         "system1_pct_of_best": 99.7,
-        "used_system2": true,
+        "used_system2": false,
         "dual_pct_of_best": 99.7,
         "dual_runs": 1
       }
@@ -253,14 +277,14 @@
     },
     {
       "held_out": "stencil",
-      "within_5pct": 0.333,
-      "pct_of_best": 69.3,
+      "within_5pct": 0.778,
+      "pct_of_best": 95.0,
       "failing_picks": 0
     },
     {
       "held_out": "spmv",
-      "within_5pct": 0.667,
-      "pct_of_best": 94.7,
+      "within_5pct": 0.556,
+      "pct_of_best": 91.8,
       "failing_picks": 0
     },
     {
@@ -272,13 +296,13 @@
     {
       "held_out": "montecarlo",
       "within_5pct": 0.0,
-      "pct_of_best": 79.5,
+      "pct_of_best": 77.6,
       "failing_picks": 0
     },
     {
       "held_out": "mltrain",
       "within_5pct": 0.667,
-      "pct_of_best": 95.0,
+      "pct_of_best": 94.2,
       "failing_picks": 0
     },
     {
@@ -286,10 +310,22 @@
       "within_5pct": 0.0,
       "pct_of_best": 0.1,
       "failing_picks": 9
+    },
+    {
+      "held_out": "llm_train",
+      "within_5pct": 1.0,
+      "pct_of_best": 99.2,
+      "failing_picks": 0
+    },
+    {
+      "held_out": "cnn_train",
+      "within_5pct": 1.0,
+      "pct_of_best": 99.8,
+      "failing_picks": 0
     }
   ],
   "latency_ms": {
-    "median": 10.417,
-    "p99": 14.621
+    "median": 4.319,
+    "p99": 5.588
   }
 }

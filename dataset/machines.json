@@ -1,0 +1,20 @@
+{
+  "rtx4050-laptop": {
+    "cpu_model": "Intel64 Family 6 Model 191 Stepping 2, GenuineIntel",
+    "cpu_cores": 10,
+    "cpu_threads": 16,
+    "cpu_freq_ghz": 2.4,
+    "ram_gb": 23.7,
+    "gpu_model": "NVIDIA GeForce RTX 4050 Laptop GPU",
+    "gpu_memory_gb": 6.0
+  },
+  "rtx5090": {
+    "cpu_model": "Intel64 Family 6 Model 198 Stepping 2, GenuineIntel",
+    "cpu_cores": 20,
+    "cpu_threads": 20,
+    "cpu_freq_ghz": 2.4,
+    "ram_gb": 63.4,
+    "gpu_model": "NVIDIA GeForce RTX 5090",
+    "gpu_memory_gb": 31.8
+  }
+}

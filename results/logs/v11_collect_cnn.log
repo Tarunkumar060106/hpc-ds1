@@ -1,0 +1,11 @@
+Intel64 Family 6 Model 191 Stepping 2, GenuineIntel | 10C/16T | NVIDIA GeForce RTX 4050 Laptop GPU
+cnn_train         64: 38/41 ok, 3 skipped in 402.1s (total    402s)
+cnn_train        128: 34/44 ok, 10 skipped in 380.9s (total    783s)
+cnn_train        256: 27/44 ok, 17 skipped in 174.7s (total    958s)
+cnn_train        384: 27/44 ok, 17 skipped in 164.2s (total   1122s)
+cnn_train        512: 27/44 ok, 17 skipped in 186.6s (total   1309s)
+cnn_train        768: 24/44 ok, 17 skipped in 237.3s (total   1546s)
+cnn_train       1024: 10/44 ok, 34 skipped in 104.6s (total   1651s)
+cnn_train       1536: 10/44 ok, 34 skipped in 217.4s (fp32 reference on the GPU) (total   1868s)
+cnn_train       2048: 10/44 ok, 34 skipped in 451.2s (fp32 reference on the GPU) (total   2319s)
+done in 2319s

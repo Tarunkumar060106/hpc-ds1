@@ -1,0 +1,32 @@
+training out-of-fold learned models ...
+  System 2 fold 0: trained on 2586 states
+  System 2 fold 1: trained on 2594 states
+  System 2 fold 2: trained on 2602 states
+  System 2 fold 3: trained on 2605 states
+  System 2 fold 4: trained on 2614 states
+  System 2 fold 5: trained on 2622 states
+  System 2 fold 6: trained on 2636 states
+  System 2 fold 7: trained on 2636 states
+  System 2 fold 8: trained on 2641 states
+  12/89 problems (292s)
+  24/89 problems (326s)
+  36/89 problems (377s)
+  48/89 problems (414s)
+  60/89 problems (449s)
+  72/89 problems (469s)
+  84/89 problems (503s)
+
+% of best after N real runs (geometric mean over 90 problems), runs used, tuning cost:
+method              @1      @2      @3      @5     @10   reach5%  med.runs  runs  core-h  gpu-h
+default            4.6     4.6     4.6     4.6     4.6        7%       1.0   1.0   0.046   0.009
+rules              4.6    49.8    75.4    83.8    83.8       45%       3.0   3.2   0.051   0.011
+random            11.3    16.1    25.3    38.0    87.4       61%       6.0  10.0   4.513   0.055
+greedy             4.6     7.0     7.9    58.1    94.6       79%       8.0   8.4   0.472   0.052
+bo_tpe            33.0    35.7    35.9    86.2    97.0       89%       4.0  10.0   3.059   0.115
+bo_gp             36.8    38.2    38.6    57.2    82.0       67%       4.0   9.5   1.768   0.126
+xgb_rank          96.8    98.2    98.7    99.0    99.6       98%       1.0  10.0   1.390   0.203
+system1_rank      97.8    98.5    99.1    99.6    99.7       99%       1.0  10.0   1.362   0.204
+system2            4.6     8.7    18.1    62.7    88.9       70%       5.0   4.2   0.199   0.010
+system2_rand      17.7    30.5    40.6    80.7    85.8       61%       3.0   2.5   0.693   0.010
+dual              97.8    97.8    97.8    97.8    97.8       89%       1.0   1.0   0.079   0.009
+saved results/benchmark.json (541s)

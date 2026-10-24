@@ -56,6 +56,17 @@ warnings.filterwarnings("ignore")
 BUDGET = 10
 CHECKPOINTS = (1, 2, 3, 5, 10)
 DEFAULT = make_config(1, 1, False, "fp32")
+START = {}  # per problem: the untuned start (DEFAULT, or the closest measured CPU fp32 setting)
+
+
+def untuned(table):
+    """The default (1 rank x 1 thread, CPU, fp32). For the largest AI-training sizes it
+    was skipped during collection (it would take minutes); then the measured CPU fp32
+    setting with the fewest cores stands in for it, so it is a faster start than the real default."""
+    if config_key(DEFAULT) in table:
+        return DEFAULT
+    cpu = [k for k in table if not k[2] and k[3] == "fp32"] or list(table)
+    return make_config(*min(cpu, key=lambda k: (k[0] * k[1], table[k]["runtime_sec"])))
 
 
 def log(m=""):
@@ -119,21 +130,21 @@ def summarize(order, best, floor):
 # methods
 # ---------------------------------------------------------------------------
 
-def m_default(table, hw, **_):
+def m_default(table, hw, inst, **_):
     r = Recorder(table, hw)
-    r(DEFAULT)
+    r(START[inst])
     return r.order
 
 
 def m_rules(table, hw, inst, **_):
     r = Recorder(table, hw)
-    run_tuning(heuristic_policy, inst[0], inst[1], DEFAULT, r, max_steps=BUDGET)
+    run_tuning(heuristic_policy, inst[0], inst[1], START[inst], r, max_steps=BUDGET)
     return r.order
 
 
 def m_greedy(table, hw, inst, **_):
     r = Recorder(table, hw)
-    run_tuning(make_greedy_search_policy(r), inst[0], inst[1], DEFAULT, r, max_steps=BUDGET)
+    run_tuning(make_greedy_search_policy(r), inst[0], inst[1], START[inst], r, max_steps=BUDGET)
     return r.order
 
 
@@ -183,9 +194,9 @@ def m_rank(table, hw, ranking, **_):
     return r.order
 
 
-def m_system2(table, hw, inst, model, start=DEFAULT, **_):
+def m_system2(table, hw, inst, model, start=None, **_):
     r = Recorder(table, hw)
-    run_tuning(model.policy(0.0), inst[0], inst[1], start, r, max_steps=BUDGET)
+    run_tuning(model.policy(0.0), inst[0], inst[1], start or START[inst], r, max_steps=BUDGET)
     return r.order
 
 
@@ -281,7 +292,8 @@ def main():
     for i, inst in enumerate(problems):
         table = tables[inst]
         best = min(t["runtime_sec"] for t in table.values())
-        floor = table.get(config_key(DEFAULT), {"runtime_sec": max(t["runtime_sec"] for t in table.values())})["runtime_sec"]
+        START[inst] = untuned(table)
+        floor = table[config_key(START[inst])]["runtime_sec"]
         for name, variants in methods.items():
             runs = []
             for v in variants:
@@ -299,13 +311,14 @@ def main():
                         kw["start"] = random.Random(kw.pop("seed")).choice(sorted(table, key=str))
                         kw["start"] = make_config(*kw["start"])
                     else:
-                        kw["start"] = DEFAULT
+                        kw["start"] = START[inst]
                 runs.append(summarize(fn(table, hardware, inst=inst, **kw), best, floor))
             per[name].append({"problem": f"{inst[0]}:{inst[1]}", "runs": runs})
         if (i + 1) % 12 == 0:
             log(f"  {i + 1}/{len(problems)} problems ({time.time() - t0:.0f}s)")
 
-    report = {"problems": len(problems), "budget": BUDGET, "methods": {}}
+    report = {"problems": len(problems), "budget": BUDGET, "methods": {},
+              "default_stand_in": sorted(f"{w}:{s}" for (w, s), c in START.items() if c != DEFAULT)}
     for name, items in per.items():
         flat = [r for it in items for r in it["runs"]]
         curve = {b: round(100 * geo([r["curve"][b - 1] for r in flat]), 1) for b in CHECKPOINTS}
@@ -319,7 +332,7 @@ def main():
             "core_hours_tuning_total": round(sum(r["core_seconds"] for r in flat) / len(flat) * len(items) / 3600, 4),
             "gpu_hours_tuning_total": round(sum(r["gpu_seconds"] for r in flat) / len(flat) * len(items) / 3600, 4),
         }
-    log("\n% of best after N real runs (geometric mean over 72 problems), runs used, tuning cost:")
+    log(f"\n% of best after N real runs (geometric mean over {len(problems)} problems), runs used, tuning cost:")
     log(f"{'method':14s} " + " ".join(f"{'@' + str(b):>7s}" for b in CHECKPOINTS) + "   reach5%  med.runs  runs  core-h  gpu-h")
     for name, m in report["methods"].items():
         c = m["pct_of_best_after_runs"]

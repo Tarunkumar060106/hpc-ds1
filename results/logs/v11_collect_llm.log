@@ -1,0 +1,41 @@
+Intel64 Family 6 Model 191 Stepping 2, GenuineIntel | 10C/16T | NVIDIA GeForce RTX 4050 Laptop GPU
+llm_train          4: 6/6 ok in  44.5s (total     44s)
+llm_train          8: 28/44 ok, 16 skipped in 291.7s (total    336s)
+llm_train         16: 27/44 ok, 17 skipped in 175.3s (total    512s)
+llm_train         24: 24/44 ok, 20 skipped in 145.3s (total    657s)
+llm_train         32: 10/44 ok, 34 skipped in  37.5s (total    694s)
+llm_train         48: 10/44 ok, 34 skipped in 100.8s (fp32 reference on the GPU) (total    795s)
+llm_train         64: 10/44 ok, 34 skipped in 244.2s (fp32 reference on the GPU) (total   1039s)
+llm_train         96: 10/44 ok, 34 skipped in 659.5s (fp32 reference on the GPU) (total   1699s)
+reference failed for llm_train 128: OutOfMemoryError: CUDA out of memory. Tried to allocate 1024.00 MiB. GPU 0 has a total capacity of 6.00 GiB of which 0 bytes is free. Of the allocated memory 14.46 GiB is allocated by PyTorch, and 910.62 MiB is reserve
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    from multiprocessing.spawn import spawn_main; spawn_main(parent_pid=8592, pipe_handle=1968)
+                                                  ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+  File "C:\Python314\Lib\multiprocessing\spawn.py", line 131, in _main
+    prepare(preparation_data)
+    ~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\multiprocessing\spawn.py", line 246, in prepare
+    _fixup_main_from_path(data['init_main_from_path'])
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\multiprocessing\spawn.py", line 297, in _fixup_main_from_path
+    main_content = runpy.run_path(main_path,
+                                  run_name="__mp_main__")
+  File "<frozen runpy>", line 287, in run_path
+  File "<frozen runpy>", line 98, in _run_module_code
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\Radiants\Projects\kairo\scripts\collect.py", line 25, in <module>
+    from hpc_ds1.collect import collect  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Radiants\Projects\kairo\hpc_ds1\__init__.py", line 5, in <module>
+    from .api import HPCDS1, Decision, load
+  File "D:\Radiants\Projects\kairo\hpc_ds1\api.py", line 33, in <module>
+    import torch
+  File "C:\Python314\Lib\site-packages\torch\__init__.py", line 281, in <module>
+    _load_dll_libraries()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\site-packages\torch\__init__.py", line 264, in _load_dll_libraries
+    raise err
+OSError: [WinError 1455] The paging file is too small for this operation to complete. Error loading "C:\Python314\Lib\site-packages\torch\lib\cudnn_adv64_9.dll" or one of its dependencies.
