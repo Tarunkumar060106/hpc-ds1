@@ -1,5 +1,54 @@
 # HPC-DS1
 
+**HPC-DS1 picks the right settings for a computer job, and the right computer for it, before the job runs.**
+
+```bash
+pip install hpc-ds1
+hpc-ds1 setup --quick        # once per machine: measures it for real (~30 min)
+hpc-ds1 predict --workload llm_train --size 32
+```
+
+## In plain words
+
+Every job a computer runs has settings: how many processes, how many threads, CPU or graphics card (GPU), full or half precision. Pick badly and the *same* job runs 10 to 400 times slower. On a lab RTX 5090 the untuned default was about 50× slower than the right settings, measured on 16 real tasks.
+
+Today people either guess, or tune by trial and error, running the job again and again (10–50 runs) to find good settings. HPC-DS1 does it like this:
+
+| | What it does | Like… |
+|---|---|---|
+| **System 1** | Looks at the job (what it is, how big, which machine) and answers instantly: "GPU, 8 threads, half precision". Nothing is run. | An experienced mechanic who hears the engine and knows the fix |
+| **System 2** | Runs the job once, looks at what happened, and suggests one change at a time | Tuning a radio by turning the dial and listening |
+| **Guard** | Notices when a job, size or machine is unlike anything it has seen, says "not sure", and asks a person | A new doctor who refers an unusual case |
+| **Fleet** | Connects many machines over the network and sends each job to the one that can finish it first, and only to machines that *can* run it | A dispatcher who won't give a truck job to a bicycle |
+
+(The names System 1 and System 2 come from psychology: Kahneman's fast intuition and slow reasoning.)
+
+**Result on 90 real problems (10 workloads):** System 1's first answer reaches **99.7%** of the best possible speed (median; 97.8% geometric mean) and never picks a setting that crashes. Bayesian optimisation, the standard auto-tuner, needs about 5 trial runs to get there. Tuning costs about **39× less compute** (`results/benchmark.json`).
+
+**Example: a job the laptop can't run.** A language-model training step at batch 96 needs 7.3 GB of GPU memory (measured). A laptop RTX 4050 has 6 GB on paper, but its measured runs slow down sharply from about 3 GB, because Windows and the display keep part of the card and the rest spills into system RAM: batch 96 took 8.6 s per step there, about 17× longer than batch 32 would suggest (0.17 s for a third of the work). At batch 128 it runs out of memory entirely. The fleet learns each machine's real limit from its own measurements and sends the job to the lab's RTX 5090 (32 GB), saying why:
+
+```
+✓ task t2 → lab-pc-01  redirected: main-01 can't run it
+  needs ~7.3 GB of GPU memory
+  ● lab-pc-01
+  ✗ main-01    can't run it: needs 7.3 GB of GPU memory; NVIDIA GeForce RTX 4050 Laptop GPU has 6 GB
+               but measured runs slow down sharply from 3.0 GB (the rest spills into system RAM)
+```
+
+Small jobs still run on the laptop when it finishes first. If a job fails on a machine anyway (out of memory, crash), it moves to the next machine that can run it automatically.
+
+## How is this different from a normal classifier?
+
+A normal classifier takes an input and outputs a label, e.g. "this photo is a cat". HPC-DS1 is different in five ways:
+
+1. **It predicts what will happen, not a label.** System 1 predicts the *runtime and failure risk* of all 44 possible settings at once, then picks the fastest that won't crash. The answer changes with the machine: the same job gets "CPU, 8 processes" on one computer and "GPU, half precision" on another.
+2. **It knows when not to trust itself.** A normal classifier is just as sure on things it has never seen. HPC-DS1 has a calibrated confidence and a familiarity guard: on workloads it never saw, it turned 240 confidently wrong automatic decisions into 0 by asking a person instead.
+3. **Its training data is measured on your machine.** There's no fixed dataset from the internet: `hpc-ds1 setup` runs real jobs on each machine and learns from those (about 10 minutes of training). Every number in this project is a real measurement.
+4. **It acts, and checks itself.** It doesn't stop at a prediction. The job runs, System 2 checks the result, and if a step made things slower it is undone. Every run it makes is saved, so `hpc-ds1 learn` makes System 1 better on the jobs the facility actually runs.
+5. **It decides where, not only how.** Across a fleet it compares every machine's expected finish time and its memory limits, and moves work between machines.
+
+## Technical overview
+
 A small, confidence-aware decision model that tunes HPC jobs, used the way Jev is: you call `decide(state)` and get back a choice, a confidence, and every option's probability. Confident decisions run automatically; uncertain ones go to an engineer.
 
 **Everything is trained and evaluated on real measurements.** Every runtime in the dataset comes from actually running eight workloads on this machine (six HPC kernels, a neural-network training step, and backend request handling): an Intel i5 (10 cores / 16 threads, 24 GB) with an RTX 4050 Laptop GPU. Nothing is simulated.
@@ -17,24 +66,26 @@ result = model.tune("stencil", 160, {"ranks": 1, "threads": 1})   # closed loop,
 
 | | HPC-DS1 | Rules of thumb | Greedy search¹ | Random moves |
 |---|---|---|---|---|
-| Tuning: % of best config reached | **96.3%** | 90.1% | 94.8% | 82.3% |
-| Real runs per tuning session | 2.9 | 2.4 | 10.7 | 8.4 |
-| Single decision picks a best move² | **94.1%** | 70.3% | – | – |
-| Decisions that made the job slower | **0.0%** | 5.6% | – | – |
-| Decisions that picked a crashing / wrong-answer config | **0.0%** | 7.7% | – | – |
+| Tuning: % of best config reached | **95.6%** | 91.5% | 95.5% | 83.5% |
+| Real runs per tuning session | 2.9 | 2.4 | 10.7 | 8.3 |
+| Single decision picks a best move² | **95.0%** | 74.8% | – | – |
+| Decisions that made the job slower | **0.3%** | 4.7% | – | – |
+| Decisions that picked a crashing / wrong-answer config | **0.0%** | 6.5% | – | – |
 
 ¹ Tries every neighbouring config at every step (what a careful engineer does by hand).
 ² Can still reach within 2% of the best runtime reachable from that state.
 
-- **Confidence:** calibration error is 0.106 after temperature scaling, within the 0.12 target. At a 0.85 threshold, 59% of decisions run automatically and 97% of those are best moves; 38% ask to confirm and 2% escalate. A 5-seed ensemble was also trained; it was not better calibrated on validation, so the single network is used.
-- **Live tuning sessions:** eight sessions, one per workload, every step executed on the hardware: 85–114% of the best known config re-run at the same time (the spread is run-to-run timing noise). Earlier six-kernel run, for reference: six sessions, one per kernel, with every step executed on the hardware during evaluation. All six ended on the same device and precision as the best known configuration. Measured against that config re-run back-to-back under the same conditions, they reached 73–111%. The spread is run-to-run timing noise of about ±25% on millisecond GPU runs; one session ended on the *identical* config and still read 93%.
-- **Never-seen workload** (train on 7, test on the 8th): accuracy ranges from 86% (FFT, training step) down to 27% (server), and calibration degrades. The familiarity guard escalates 100% of those decisions: 240 confidently wrong automatic moves become 0, while flagging 0 of 286 familiar test decisions (`results/guard.json`).
+Ten workloads, 90 problems, 337 held-out test states (v1.1; v1.0 had eight workloads).
+
+- **Confidence:** calibration error is 0.136 after temperature scaling (0.359 before). At a 0.85 threshold, 56% of decisions run automatically and 97% of those are best moves; 34% ask to confirm and 9% escalate. A 5-seed ensemble was also trained; it was not better calibrated on validation, so the single network is used.
+- **Live tuning sessions** (v1.0, not re-run for v1.1): eight sessions, one per workload, every step executed on the hardware: 85–114% of the best known config re-run at the same time (the spread is run-to-run timing noise). Earlier six-kernel run, for reference: six sessions, one per kernel, with every step executed on the hardware during evaluation. All six ended on the same device and precision as the best known configuration. Measured against that config re-run back-to-back under the same conditions, they reached 73–111%. The spread is run-to-run timing noise of about ±25% on millisecond GPU runs; one session ended on the *identical* config and still read 93%.
+- **Never-seen workload** (train on the others, test on one never seen): accuracy drops and calibration degrades. The familiarity guard escalates 100% of those decisions for all ten workloads, turning 298 confidently wrong automatic moves into 0, while flagging 0 of 337 familiar test decisions (`results/guard.json`).
 
 Full numbers: `results/metrics.json` and `results/generalization.json`; interactive: the layer explorer (below).
 
 ## System 1: the whole configuration before anything runs
 
-`hpc_ds1/system1.py` answers from the job description alone: workload, size and the machine. A performance model learned from every real measured run predicts each configuration's runtime and failure risk. An ensemble of eight, each trained on a different bootstrap resample of problems and with a loss that ranks the configs of each problem, scores all 44 configurations in one pass (about 9 ms on CPU); its disagreement becomes the confidence.
+`hpc_ds1/system1.py` answers from the job description alone: workload, size and the machine. A performance model learned from every real measured run predicts each configuration's runtime and failure risk. An ensemble of eight, each trained on a different bootstrap resample of problems and with a loss that ranks the configs of each problem, scores all 44 configurations in one pass (about 4 ms on CPU); its disagreement becomes the confidence.
 
 ```bash
 hpc-ds1 predict --workload mltrain --size 4096   # instant: GPU, bf16 — nothing is run
@@ -45,13 +96,13 @@ hpc-ds1 plan    --workload stencil --size 160    # dual process: System 1 picks,
 
 | Held-out problem sizes, from a slow 1×1 CPU start | % of best speed | Real runs |
 |---|---|---|
-| **Dual process (System 1 → System 2 when unsure)** | **98.7%** | **1.0** |
-| System 2 alone | 99.1% | 5.1 |
-| Rules of thumb | 88.1% | 3.6 |
+| **Dual process (System 1 → System 2 when unsure)** | **98.8%** | **1.0** |
+| System 2 alone | 99.4% | 5.0 |
+| Rules of thumb | 90.3% | 3.5 |
 
-- Cross-validated over all 72 problems (9 folds by size): 83.3% of instant picks are within 5% of the best configuration, reaching 96.9% of best speed, with 0 crashing picks. The dual process gives up about 0.4 points of speed against System 2 alone for 5x fewer real runs.
-- **Confidence:** calibrated (error about 0.05), but with 72 problems it barely separates good picks from bad: AUROC 0.41–0.55 across every signal set tried (`results/experiments/system1_confidence_*.json`), i.e. noise-dominated. More measured problems (level 5, in use) is the fix, not more tuning. About 40% of jobs are confident enough to skip System 2. The recipe was chosen by cross-validation without touching the test sizes (`scripts/tune_system1.py`, `results/system1_tuning.json`); it traded about one problem's worth of accuracy for this.
-- **Limitations:** System 1's confidence barely separates good picks from bad, so System 2's check matters. Results on the 8 test sizes are a small sample.
+- Cross-validated over all 90 problems (9 folds by size, 10 workloads): 88.8% of instant picks are within 5% of the best configuration, reaching 97.7% of best speed, with 0 crashing picks (v1.0, 72 problems: 83.3% and 96.9%). The dual process gives up about 0.6 points of speed against System 2 alone for 5x fewer real runs.
+- **Confidence:** calibrated (error 0.013), but it does not separate good picks from bad: AUROC 0.43 on 90 problems, and 0.41–0.55 across every signal set tried on 72 (`results/experiments/system1_confidence_*.json`), i.e. noise-dominated. More measured problems (level 5, in use) is the fix, not more tuning. About 40% of jobs are confident enough to skip System 2. The recipe was chosen by cross-validation without touching the test sizes (`scripts/tune_system1.py`, `results/system1_tuning.json`); it traded about one problem's worth of accuracy for this.
+- **Limitations:** System 1's confidence barely separates good picks from bad, so System 2's check matters. Results on the 10 test sizes are a small sample.
 - On a workload System 1 never saw, picks can be badly wrong (the server workload, held out, picks the GPU, which has no server version). The size and workload checks escalate those.
 
 ### Level 5: System 2 teaches System 1
