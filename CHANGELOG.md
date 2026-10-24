@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.3 — faster setup of the AI workloads
+
+- `setup` no longer measures bf16 training on the CPU for the GPU-class workloads (`llm_train`, `cnn_train`) on machines with a GPU: one such run takes minutes (74–151 s on the laptop's i5 at the smallest size) and is never a sensible choice there. Those settings are recorded as skipped, with the reason. fp32 CPU settings are still measured within the 60 s budget.
+
 ## v1.1.2 — spread work across identical machines
 
 - Fixed: jobs of a workload no device had measured yet all went to the first device (they count as 0 s of queue). They are now spread by how many jobs each device already has, so two RTX 5090s share them evenly.
