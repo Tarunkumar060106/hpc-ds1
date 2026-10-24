@@ -476,7 +476,7 @@ function renderFleet() {
     $("flTasks").innerHTML = fl.tasks.length ? fl.tasks.map(function (t) {
       var c = t.placement.candidates.slice().sort(function (a, b) { return (a.finish_sec == null) - (b.finish_sec == null) || a.finish_sec - b.finish_sec; });
       var cands = '<div class="cands">' + c.map(function (x) {
-        if (x.can_run === false) return '<span class="cant">' + esc(x.name) + '</span><span class="cant">can't run it: ' + esc(x.why_not) + "</span>";
+        if (x.can_run === false) return '<span class="cant">' + esc(x.name) + '</span><span class="cant">can&rsquo;t run it: ' + esc(x.why_not) + "</span>";
         return '<span class="' + (x.device === t.device ? "win" : "") + '">' + esc(x.name) + "</span><span>" + (x.finish_sec == null ? esc(x.note) : "finish " + ms(x.finish_sec) + " = queue " + ms(x.queue_sec) + " + run " + ms(x.expected_runtime_sec)) + "</span>";
       }).join("") + "</div>";
       var res = t.result ? taskResult(t.result) : t.error ? '<span class="reasons">' + esc(t.error) + "</span>" : "";

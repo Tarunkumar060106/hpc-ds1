@@ -395,3 +395,18 @@ def test_usable_gpu_memory_is_where_measured_runs_start_spilling():
     ok, why = can_run(dev, "llm_train", 48, 3.74)
     assert not ok and "slow down sharply from 3.7 GB" in why
     assert k.gpu_class
+
+
+@pytest.mark.parametrize("page", ["console.html", "index.html"])
+def test_ui_pages_have_valid_javascript(page, tmp_path):
+    import re
+    import shutil
+    import subprocess
+    from hpc_ds1.paths import UI_DIR
+    if shutil.which("node") is None:
+        pytest.skip("node is not installed")
+    js = "\n".join(re.findall(r"<script>(.*?)</script>", (UI_DIR / page).read_text(encoding="utf-8"), re.S))
+    f = tmp_path / "page.js"
+    f.write_text(js, encoding="utf-8")
+    out = subprocess.run(["node", "--check", str(f)], capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr[:400]
