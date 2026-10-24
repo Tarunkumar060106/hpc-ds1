@@ -40,6 +40,9 @@ OUT = Path(os.environ.get("ENCODER_OUT", PROJECT_ROOT / "models" / "encoder"))
 HINTS = os.environ.get("ENCODER_HINTS", "1") == "1"  # read out-of-fold System 1 estimates
 FAIL_HINTS = os.environ.get("ENCODER_FAIL_HINTS", "0") == "1"  # tried; worse on validation
 EPOCHS, BATCH, LR = int(os.environ.get("ENCODER_EPOCHS", 5)), 16, 3e-5
+BASE = os.environ.get("ENCODER_BASE", BASE_MODEL)  # e.g. answerdotai/ModernBERT-large, or a local folder
+MICRO = int(os.environ.get("ENCODER_MICRO", BATCH))  # micro-batch; gradients are accumulated to BATCH
+CHECKPOINTING = os.environ.get("ENCODER_CHECKPOINTING", "0") == "1"  # saves GPU memory for large encoders
 
 
 def log(m=""):
@@ -90,7 +93,9 @@ def main():
         f"unseen wording {len(unseen_wording)}, test sizes {len(on_test)}")
     log("families: " + ", ".join(f"{k} {v}" for k, v in Counter(e.family for e in exs).items()))
 
-    tok, model = load_tokenizer_and_model(BASE_MODEL, device=device)
+    tok, model = load_tokenizer_and_model(BASE, device=device)
+    if CHECKPOINTING:
+        model.base.gradient_checkpointing_enable()
     opt = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=0.01)
     steps = EPOCHS * (len(train) // BATCH)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=LR, total_steps=steps, pct_start=0.1)
@@ -100,12 +105,15 @@ def main():
         model.train()
         for i in range(0, len(train) - BATCH + 1, BATCH):
             chunk = train[i:i + BATCH]
-            b = encode(tok, [(e.question, e.options, e.state_text) for e in chunk], device=device)
-            y = torch.tensor([e.answer for e in chunk], device=device)
-            with torch.autocast(device.type, dtype=torch.bfloat16, enabled=device.type == "cuda"):
-                loss = F.cross_entropy(model(**b).float(), y)
             opt.zero_grad(set_to_none=True)
-            loss.backward()
+            for j in range(0, BATCH, MICRO):  # same effective batch for every encoder size
+                part = chunk[j:j + MICRO]
+                b = encode(tok, [(e.question, e.options, e.state_text) for e in part], device=device)
+                y = torch.tensor([e.answer for e in part], device=device)
+                with torch.autocast(device.type, dtype=torch.bfloat16, enabled=device.type == "cuda"):
+                    loss = F.cross_entropy(model(**b).float(), y) * len(part) / BATCH
+                loss.backward()
+            loss = loss * BATCH / len(part)
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
             sched.step()
@@ -136,7 +144,7 @@ def main():
             f"ECE {r['ece']:.3f}  n={r['n']}")
         return r
 
-    res = {"base_model": BASE_MODEL, "epochs": EPOCHS, "hints": HINTS, "fail_hints": FAIL_HINTS, "temperature": round(temp, 4), "train_questions": len(train),
+    res = {"base_model": BASE, "micro_batch": MICRO, "minutes": round((time.time() - t0) / 60, 1), "epochs": EPOCHS, "hints": HINTS, "fail_hints": FAIL_HINTS, "temperature": round(temp, 4), "train_questions": len(train),
            "train_minutes": round((time.time() - t0) / 60, 1)}
     res["seen_wording_seen_problems(val)"] = report("validation (seen wording)", val)
     res["unseen_wording"] = report("unseen wording, seen problems", unseen_wording)
