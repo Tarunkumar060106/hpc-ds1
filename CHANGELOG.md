@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.2 — spread work across identical machines
+
+- Fixed: jobs of a workload no device had measured yet all went to the first device (they count as 0 s of queue). They are now spread by how many jobs each device already has, so two RTX 5090s share them evenly.
+- `submit` and `agent` say clearly when `--server` isn't an `http://…` address, instead of a traceback.
+
 ## v1.1.1 — console fix
 
 - Fixed: the web console was blank in v1.1.0. An apostrophe in the new "can't run it" label broke the page's JavaScript. A test now syntax-checks the console's scripts.
