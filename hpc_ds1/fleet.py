@@ -20,7 +20,17 @@ Placement. For each task the coordinator estimates, on every online device,
 where the expected runtime is the device's own best measured runtime at the
 nearest measured size, scaled by the kernel's work ratio. The task goes to the
 device with the earliest finish; every device's estimate is kept on the task,
-so the choice can be audited. A device with no measurements of that kernel
+so the choice can be audited.
+
+Can the device run it at all? Before comparing finish times, devices that
+cannot run the job are set aside, with the reason in plain words:
+  - the job needs more GPU memory than the device has. The need is the real
+    peak GPU memory measured for that job and size on any device of the fleet
+    (or fitted from the sizes measured, or the kernel's own estimate); above
+    its memory a GPU spills into system RAM and runs many times slower;
+  - every setting failed at that size when the device measured it;
+  - the job already failed on that device (out of memory, crash): the task is
+    then re-queued automatically on the next device that can run it. A device with no measurements of that kernel
 gets no estimate and is only used if no device has one. On the chosen device
 its own model tunes the job, and moves that aren't "auto" wait for approval
 in the console like any other.
@@ -69,6 +79,115 @@ def device_profile(hardware):
     return prof
 
 
+def device_limits(hardware):
+    """What this machine's own measurements say it can and cannot run:
+    {"gpu_peak_gb": {workload: {size: GB}}, "failed": {workload: [sizes]}} where
+    gpu_peak_gb is the smallest real peak GPU memory of a correct GPU run and
+    failed lists sizes at which no setting ran correctly."""
+    try:
+        from .dataset import data_dir, load_hardware, load_measurements
+        measured_on = load_hardware(data_dir() / "hardware.json")
+        if measured_on.get("name") != hardware.get("name"):
+            return {}
+        rows = load_measurements(data_dir() / "measurements.jsonl")
+    except (OSError, ValueError):
+        return {}
+    peak, ok, seen = {}, set(), set()
+    for r in rows:
+        key = (r["workload"], int(r["size"]))
+        seen.add(key)
+        if r.get("ok") and r.get("correct"):
+            ok.add(key)
+            g = (r.get("telemetry") or {}).get("gpu_peak_gb")
+            if r["config"].get("gpu") and g:
+                w = peak.setdefault(r["workload"], {})
+                w[str(key[1])] = min(g, w.get(str(key[1]), g))
+    failed = {}
+    for w, s in sorted(seen - ok):
+        failed.setdefault(w, []).append(s)
+    return {"gpu_peak_gb": peak, "failed": failed, "gpu_usable_gb": usable_gpu_memory(rows)}
+
+
+SPILL_SLOWDOWN = 2.0  # a size this much slower per unit of work than the device's best is spilling
+
+
+def usable_gpu_memory(rows):
+    """GPU memory this device can really use at full speed, from its own runs: the
+    smallest peak memory at which a GPU-class job got SPILL_SLOWDOWN times slower per
+    unit of work than at its smaller sizes (Windows and the display keep part of
+    the card; above the rest the driver spills into system RAM). None if no run
+    has slowed down that way."""
+    best = {}
+    for r in rows:
+        k = KERNELS.get(r["workload"])
+        t = r.get("telemetry") or {}
+        if not (getattr(k, "gpu_class", False) and r["config"].get("gpu") and r.get("ok") and r.get("correct")
+                and t.get("gpu_peak_gb")):
+            continue
+        key = (r["workload"], int(r["size"]))
+        if key not in best or t["runtime_sec"] < best[key][0]:
+            best[key] = (t["runtime_sec"], t["gpu_peak_gb"])
+    spill = []
+    for w in {w for w, _ in best}:
+        sizes = sorted(s for x, s in best if x == w)
+        per = {s: best[(w, s)][0] / KERNELS[w].work(s) for s in sizes}
+        for i, s in enumerate(sizes[1:], start=1):
+            if per[s] > SPILL_SLOWDOWN * min(per[x] for x in sizes[:i]):
+                spill.append(best[(w, s)][1])
+                break
+    return round(min(spill), 2) if spill else None
+
+
+def memory_need_gb(devices, workload, size):
+    """GPU memory a job needs, and where that number comes from: measured on a
+    device at this size, fitted from the sizes measured (power law), or the
+    kernel's own estimate. None if nothing is known."""
+    pts = {}
+    for d in devices:
+        for s, g in ((d.get("limits") or {}).get("gpu_peak_gb") or {}).get(workload, {}).items():
+            pts[int(s)] = min(g, pts.get(int(s), g))
+    if size in pts:
+        src = [d["name"] for d in devices
+               if str(size) in ((d.get("limits") or {}).get("gpu_peak_gb") or {}).get(workload, {})]
+        return pts[size], f"measured on {', '.join(src)}"
+    if len(pts) >= 2:
+        xs = sorted(pts)
+        lx = [math.log(x) for x in xs]
+        ly = [math.log(pts[x]) for x in xs]
+        mx, my = sum(lx) / len(lx), sum(ly) / len(ly)
+        b = sum((a - mx) * (c - my) for a, c in zip(lx, ly)) / max(1e-12, sum((a - mx) ** 2 for a in lx))
+        return math.exp(my + b * (math.log(size) - mx)), f"fitted from {len(xs)} measured sizes"
+    k = KERNELS.get(workload)
+    if k is not None and hasattr(k, "memory_gb"):
+        return k.memory_gb(size, "bf16"), "the kernel's own estimate"
+    return None, None
+
+
+def can_run(device, workload, size, need):
+    """(True, None) or (False, plain-language reason)."""
+    lim = device.get("limits") or {}
+    key = f"{workload}:{size}"
+    if key in device.get("cant_run", {}):
+        return False, f"it already failed there: {device['cant_run'][key]}"
+    if size in (lim.get("failed") or {}).get(workload, []):
+        return False, "every setting failed at this size when it was measured"
+    hw = device.get("hardware") or {}
+    mem = hw.get("gpu_memory_gb") or 0
+    k = KERNELS.get(workload)
+    if need is not None and getattr(k, "gpu_class", False):
+        if not mem:
+            return False, f"needs a GPU with {need:.1f} GB; this machine has none"
+        usable = lim.get("gpu_usable_gb")
+        gpu = hw.get("gpu_model") or "its GPU"
+        if usable and need >= usable:
+            return False, (f"needs {need:.1f} GB of GPU memory; {gpu} has {mem:.0f} GB but measured runs slow down "
+                           f"sharply from {usable:.1f} GB (the rest spills into system RAM)")
+        if need > 0.95 * mem:
+            return False, (f"needs {need:.1f} GB of GPU memory, {gpu} has {mem:.0f} GB: "
+                           "it would spill into system RAM and run many times slower")
+    return True, None
+
+
 def estimate_runtime(profile, workload, size):
     """Best runtime this device should reach on (workload, size), from its own
     measurements at the nearest size scaled by work; None if it never ran it."""
@@ -93,14 +212,16 @@ class Fleet:
         self._dev_ids, self._task_ids = itertools.count(1), itertools.count(1)
 
     # devices
-    def register(self, name, hardware, profile, model):
+    def register(self, name, hardware, profile, model, limits=None):
         with self.lock:
             for d in self.devices.values():  # a device reconnecting keeps its id
                 if d["name"] == name and d["hardware"].get("name") == hardware.get("name"):
-                    d.update(hardware=hardware, profile=profile, model=model, last_seen=time.time())
+                    d.update(hardware=hardware, profile=profile, model=model, limits=limits or {},
+                             last_seen=time.time())
                     return d
             d = {"id": f"d{next(self._dev_ids)}", "name": name, "hardware": hardware, "profile": profile,
-                 "model": model, "joined_at": _now(), "last_seen": time.time(), "current": None}
+                 "model": model, "limits": limits or {}, "cant_run": {}, "joined_at": _now(),
+                 "last_seen": time.time(), "current": None}
             self.devices[d["id"]] = d
             return d
 
@@ -116,36 +237,53 @@ class Fleet:
         if workload not in KERNELS:
             raise ValueError(f"unknown workload {workload!r}; choose from {list(KERNELS)}")
         with self.lock:
-            candidates = []
-            for d in self.devices.values():
-                if not self.online(d):
-                    continue
-                est = estimate_runtime(d["profile"], workload, size)
-                wait = self._queue_sec(d["id"])
-                candidates.append({"device": d["id"], "name": d["name"], "expected_runtime_sec": est,
-                                   "queue_sec": round(wait, 6),
-                                   "finish_sec": None if est is None else round(wait + est, 6),
-                                   "note": "" if est is not None else f"has not measured {workload} yet"})
-            if not candidates:
-                raise ValueError("no device is online; connect one with `hpc-ds1 agent`")
-            known = [c for c in candidates if c["finish_sec"] is not None]
-            if known:
-                best = min(known, key=lambda c: c["finish_sec"])
-                why = (f"earliest expected finish: {best['finish_sec']:.4g}s "
-                       f"(queue {best['queue_sec']:.3g}s + run {best['expected_runtime_sec']:.3g}s)")
-            else:
-                best = min(candidates, key=lambda c: c["queue_sec"])
-                why = "no device has measured this kernel; sent to the least busy one"
+            best, candidates, why, need = self._place(workload, int(size))
             t = {"id": f"t{next(self._task_ids)}", "workload": workload, "size": int(size),
                  "config": config or {"ranks": 1, "threads": 1, "gpu": False, "precision": "fp32"},
                  "start": start or ("given" if config else "system1"),
                  "threshold": threshold, "escalate_below": escalate_below, "max_steps": max_steps,
                  "device": best["device"], "status": "queued", "submitted_at": _now(),
-                 "placement": {"candidates": candidates, "reason": why,
+                 "placement": {"candidates": candidates, "reason": why, "memory_need_gb": need,
                                "chosen_estimate_sec": best["expected_runtime_sec"]},
-                 "pending": None, "answer": None, "result": None, "error": None, "events": []}
+                 "pending": None, "answer": None, "result": None, "error": None, "events": [], "redirects": []}
             self.tasks[t["id"]] = t
             return t
+
+    def _place(self, workload, size, exclude=()):
+        """Pick the device for a job: drop devices that can't run it, then the earliest
+        expected finish. Returns (chosen candidate, all candidates, reason, memory need)."""
+        online = [d for d in self.devices.values() if self.online(d) and d["id"] not in exclude]
+        if not online:
+            raise ValueError("no device is online; connect one with `hpc-ds1 agent`")
+        need, need_src = memory_need_gb(list(self.devices.values()), workload, size)
+        candidates = []
+        for d in online:
+            est = estimate_runtime(d["profile"], workload, size)
+            wait = self._queue_sec(d["id"])
+            ok, why_not = can_run(d, workload, size, need)
+            candidates.append({"device": d["id"], "name": d["name"], "expected_runtime_sec": est,
+                               "queue_sec": round(wait, 6),
+                               "finish_sec": None if est is None else round(wait + est, 6),
+                               "can_run": ok, "why_not": why_not,
+                               "note": "" if est is not None else f"has not measured {workload} yet"})
+        able = [c for c in candidates if c["can_run"]]
+        pool = able or candidates
+        known = [c for c in pool if c["finish_sec"] is not None]
+        if known:
+            best = min(known, key=lambda c: c["finish_sec"])
+            why = (f"earliest expected finish: {best['finish_sec']:.4g}s "
+                   f"(queue {best['queue_sec']:.3g}s + run {best['expected_runtime_sec']:.3g}s)")
+        else:
+            best = min(pool, key=lambda c: c["queue_sec"])
+            why = "no device that can run it has measured this kernel; sent to the least busy one"
+        if not able:
+            why = "no device can comfortably run it; " + why
+        rejected = [c for c in candidates if not c["can_run"]]
+        if rejected and able:
+            why = "; ".join(f"{c['name']} can't: {c['why_not']}" for c in rejected) + f" -> {best['name']}, " + why
+        if need is not None:
+            why += f" [needs ~{need:.1f} GB GPU memory, {need_src}]"
+        return best, candidates, why, None if need is None else round(need, 3)
 
     def poll(self, dev_id):
         with self.lock:
@@ -181,10 +319,33 @@ class Fleet:
             if body.get("pending"):
                 t["pending"], t["answer"], t["status"] = {**body["pending"], "since": _now()}, None, "awaiting_approval"
             if body.get("status") in ("done", "failed"):
+                dev = self.devices[dev_id]
+                dev["current"] = None
+                if body["status"] == "failed" and self._requeue(t, dev, body.get("error") or "failed"):
+                    return {"answer": None}
                 t["status"], t["finished_at"] = body["status"], _now()
                 t["result"], t["error"] = body.get("result"), body.get("error")
-                self.devices[dev_id]["current"] = None
             return {"answer": t["answer"]}
+
+    def _requeue(self, t, dev, error):
+        """A task that failed on a device moves to the next device that can run it."""
+        short = error if len(error) < 160 else error[:157] + "..."
+        dev.setdefault("cant_run", {})[f"{t['workload']}:{t['size']}"] = short
+        tried = {r["device"] for r in t["redirects"]} | {dev["id"]}
+        try:
+            best, candidates, why, need = self._place(t["workload"], t["size"], exclude=tried)
+        except ValueError:
+            return False
+        if not best["can_run"]:
+            return False
+        t["redirects"].append({"device": dev["id"], "from": dev["name"], "to": best["name"], "reason": short,
+                               "at": _now()})
+        t["device"], t["status"] = best["device"], "queued"
+        t["placement"] = {"candidates": candidates, "memory_need_gb": need,
+                          "reason": f"failed on {dev['name']} ({short}); re-queued -> {best['name']}, {why}",
+                          "chosen_estimate_sec": best["expected_runtime_sec"]}
+        t["pending"], t["answer"] = None, None
+        return True
 
     def approve(self, task_id, approve, by="engineer"):
         with self.lock:
@@ -204,7 +365,8 @@ class Fleet:
 
     def snapshot(self):
         with self.lock:
-            devs = [{**{k: v for k, v in d.items() if k != "profile"}, "online": self.online(d),
+            devs = [{**{k: v for k, v in d.items() if k not in ("profile", "limits")}, "online": self.online(d),
+                     "gpu_peak_gb": (d.get("limits") or {}).get("gpu_peak_gb", {}),
                      "measured": {w: sorted(int(s) for s in sizes) for w, sizes in d["profile"].items()},
                      "seconds_since_seen": round(time.time() - d["last_seen"], 1)} for d in self.devices.values()]
             tasks = sorted(self.tasks.values(), key=lambda t: t["submitted_at"], reverse=True)
@@ -260,6 +422,7 @@ class Agent:
         prof = device_profile(hw)
         info = model.info()
         d = self._post("/v1/fleet/register", {"name": self.name, "hardware": hw, "profile": prof,
+                                              "limits": device_limits(hw),
                                               "model": {"trained_on": info.get("trained_on"),
                                                         "parameters": info["parameters"]}})
         self.id = d["id"]
@@ -319,9 +482,11 @@ class Agent:
             self.log(f"task {tid}: ran {r.final_runtime * 1e3:.2f} ms"
                      + (f", x{result['vs_default']:.1f} vs untuned" if base else "")
                      + f", {r.experiments} run(s) -> {r.final_config}")
-        except Exception as e:  # report and keep serving
-            report(status="failed", error=str(e))
-            self.log(f"task {tid} failed: {e}")
+        except Exception as e:  # report and keep serving (the coordinator re-queues it elsewhere)
+            cause = getattr(locals().get("runner"), "last_error", None)
+            msg = f"{e}" + (f" ({cause})" if cause else "")
+            report(status="failed", error=msg)
+            self.log(f"task {tid} failed: {msg}")
 
     def run(self, model=None):
         from .api import HPCDS1

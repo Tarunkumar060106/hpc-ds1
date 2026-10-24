@@ -29,7 +29,7 @@ def _enable_windows_ansi():
 def _use_colour():
     if os.environ.get("NO_COLOR"):
         return False
-    if os.environ.get("FORCE_COLOR"):
+    if os.environ.get("FORCE_COLOR", "") not in ("", "0"):
         return True
     if not (hasattr(sys.stdout, "isatty") and sys.stdout.isatty()):
         return False

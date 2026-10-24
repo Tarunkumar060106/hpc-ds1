@@ -91,6 +91,8 @@ pre.code { background: var(--code-bg); border: 1px solid var(--line); border-rad
 .err { color: var(--bad); font-size: 12.5px; }
 .cands { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 12.5px; margin-top: 6px; font-family: var(--mono); }
 .cands .win { color: var(--ok); font-weight: 500; }
+.cands .cant { color: var(--bad); }
+.redirect { margin: 4px 0; padding: 4px 8px; border-radius: 6px; font-size: 12.5px; background: var(--warn-bg); color: var(--warn); }
 .hbar { height: 8px; background: var(--line2); border-radius: 4px; overflow: hidden; }
 .hbar i { display: block; height: 100%; background: var(--acc); border-radius: 4px; }
 
@@ -467,17 +469,21 @@ function renderFleet() {
       var meas = Object.keys(d.measured || {});
       return "<tr><td><b>" + esc(d.name) + '</b><div class="soft mono">' + esc(d.id) + "</div></td><td>" + pill(d.online ? "online" : "offline") +
         '<div class="soft">seen ' + d.seconds_since_seen + "s ago</div></td><td>" + esc(h.cpu_cores) + "C/" + esc(h.cpu_threads) + "T · " + esc(h.ram_gb) + " GB" +
-        '<div class="soft">' + esc(h.gpu_model || "no GPU") + "</div></td><td>" + (meas.length ? esc(meas.join(", ")) : '<span class="reasons">none yet: run hpc-ds1 setup</span>') +
+        '<div class="soft">' + esc(h.gpu_model || "no GPU") + (h.gpu_memory_gb ? " · " + esc(h.gpu_memory_gb) + " GB" : "") + "</div></td><td>" + (meas.length ? esc(meas.join(", ")) : '<span class="reasons">none yet: run hpc-ds1 setup</span>') +
         "</td><td>" + esc(d.model && d.model.trained_on) + (d.model && d.model.trained_on !== h.name ? '<div class="reasons">not this device: moves need approval</div>' : "") +
         "</td><td>" + (d.current ? '<span class="mono">' + esc(d.current) + "</span>" : '<span class="soft">idle</span>') + "</td></tr>";
     }).join("") : '<tr><td colspan="6"><div class="empty">No devices yet. Run the agent command above on any machine, including this one.</div></td></tr>';
     $("flTasks").innerHTML = fl.tasks.length ? fl.tasks.map(function (t) {
       var c = t.placement.candidates.slice().sort(function (a, b) { return (a.finish_sec == null) - (b.finish_sec == null) || a.finish_sec - b.finish_sec; });
       var cands = '<div class="cands">' + c.map(function (x) {
+        if (x.can_run === false) return '<span class="cant">' + esc(x.name) + '</span><span class="cant">can't run it: ' + esc(x.why_not) + "</span>";
         return '<span class="' + (x.device === t.device ? "win" : "") + '">' + esc(x.name) + "</span><span>" + (x.finish_sec == null ? esc(x.note) : "finish " + ms(x.finish_sec) + " = queue " + ms(x.queue_sec) + " + run " + ms(x.expected_runtime_sec)) + "</span>";
       }).join("") + "</div>";
       var res = t.result ? taskResult(t.result) : t.error ? '<span class="reasons">' + esc(t.error) + "</span>" : "";
-      return '<tr><td class="mono">' + esc(t.id) + '<div class="soft">' + when(t.submitted_at) + "</div></td><td>" + job(t.workload, t.size) + '<div class="soft">' + (t.system1 ? "System 1: " + cfg(t.system1.config) + " (" + pct(t.system1.confidence) + ")" : t.start === "system1" ? "System 1 on the device" : "from " + cfg(t.config)) + "</div></td><td><b>" + esc(names[t.device] || t.device) +
+      var moved = (t.redirects || []).map(function (r) { return '<div class="redirect">↪ moved from <b>' + esc(r.from) + "</b> to <b>" + esc(r.to) + "</b>: " + esc(r.reason) + "</div>"; }).join("");
+      var need = t.placement.memory_need_gb != null ? '<div class="soft">needs ~' + t.placement.memory_need_gb.toFixed(1) + " GB GPU memory</div>" : "";
+      var redirected = t.placement.candidates.some(function (x) { return x.can_run === false; }) ? '<div class="redirect">↪ redirected: a device could not run it</div>' : "";
+      return '<tr><td class="mono">' + esc(t.id) + '<div class="soft">' + when(t.submitted_at) + "</div></td><td>" + job(t.workload, t.size) + '<div class="soft">' + (t.system1 ? "System 1: " + cfg(t.system1.config) + " (" + pct(t.system1.confidence) + ")" : t.start === "system1" ? "System 1 on the device" : "from " + cfg(t.config)) + "</div>" + need + "</td><td><b>" + esc(names[t.device] || t.device) + "</b>" + redirected + moved + "<b>" +
         '</b><div class="muted" style="font-size:12.5px">' + esc(t.placement.reason) + "</div>" + cands + "</td><td>" + pill(t.status) + "</td><td>" + res + "</td></tr>";
     }).join("") : '<tr><td colspan="5"><div class="empty">No tasks yet.</div></td></tr>';
     $("flUpd").textContent = "updated " + new Date().toLocaleTimeString();

@@ -95,9 +95,19 @@ def main():
                    threshold=args.threshold, escalate_below=args.escalate_below, start=args.start)
         chosen = next(c["name"] for c in t["placement"]["candidates"] if c["device"] == t["device"])
         print(f"{S.good(S.OK)} {S.bold('task ' + t['id'])} {S.dim(S.ARROW)} {S.paint(chosen, 'bold', 'magenta')}  "
-              f"{S.dim('earliest expected finish')}", flush=True)
-        for c in sorted(t["placement"]["candidates"], key=lambda c: (c["finish_sec"] is None, c["finish_sec"] or 0)):
+              + (S.warn("redirected: " + ", ".join(c["name"] for c in t["placement"]["candidates"] if not c.get("can_run", True))
+                        + " can't run it") if any(not c.get("can_run", True) for c in t["placement"]["candidates"])
+                 else S.dim("earliest expected finish")), flush=True)
+        need = t["placement"].get("memory_need_gb")
+        if need is not None:
+            print(f"  {S.dim('needs')} ~{S.num(f'{need:.1f} GB')} {S.dim('of GPU memory')}")
+        for c in sorted(t["placement"]["candidates"], key=lambda c: (not c.get("can_run", True), c["finish_sec"] is None,
+                                                                     c["finish_sec"] or 0)):
             mark = S.good(S.DOT) if c["device"] == t["device"] else S.dim(S.DOT)
+            if not c.get("can_run", True):
+                print(f"  {S.bad(S.BAD)} {c['name']:18s} {S.bad("can't run it:")} "
+                      f"{c['why_not']}")
+                continue
             if c["finish_sec"] is None:
                 print(f"  {mark} {c['name']:18s} {S.dim(c['note'])}")
                 continue

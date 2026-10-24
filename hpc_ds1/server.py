@@ -306,7 +306,7 @@ def make_handler(app: App):
                     if path == "/v1/fleet/register":
                         return self._send(200, app.fleet.register(str(body.get("name", "device"))[:60],
                                                                   body.get("hardware", {}), body.get("profile", {}),
-                                                                  body.get("model", {})))
+                                                                  body.get("model", {}), body.get("limits") or {}))
                     if path == "/v1/fleet/poll":
                         return self._send(200, {"task": app.fleet.poll(body.get("device"))})
                     if path == "/v1/fleet/tasks":
