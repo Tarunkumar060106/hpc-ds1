@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.1 — console fix
+
+- Fixed: the web console was blank in v1.1.0. An apostrophe in the new "can't run it" label broke the page's JavaScript. A test now syntax-checks the console's scripts.
+
 ## v1.1.0 — machines that can't run a job, real AI workloads, readable output
 
 - **The fleet knows what each machine can run.** Before comparing finish times, the coordinator sets aside devices that can't run a job, and says why in plain words: the job needs more GPU memory than the device can really use, every setting failed at that size, or the job already failed there. The memory need is the real peak GPU memory measured for that job on any device (or fitted from measured sizes). Each device learns its *usable* GPU memory from its own runs: the laptop RTX 4050 has 6 GB, but measured runs slow down sharply from 3.0 GB (Windows and the display keep part of the card; the rest spills into system RAM). A job that fails on a device anyway (out of memory, crash) is re-queued automatically on the next device that can run it. The CLI and console show every redirect.

@@ -1,6 +1,6 @@
 """HPC-DS1: a confidence-aware decision model for tuning HPC jobs, trained on real measurements."""
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 from .api import HPCDS1, Decision, load
 from .kernels import KERNELS, WORKLOAD_NAMES
