@@ -17,7 +17,7 @@ from hpc_ds1.space import ACTIONS, STOP, all_configs, apply_action, config_key, 
 
 ROOT = Path(__file__).resolve().parent.parent
 SMALL = {"gemm": 256, "fft": 32, "stencil": 32, "spmv": 4000, "nbody": 512, "montecarlo": 200_000,
-         "mltrain": 256, "server": 64}
+         "mltrain": 256, "server": 64, "llm_train": 4, "cnn_train": 8}
 
 
 def test_space_is_closed_under_valid_actions():
@@ -325,3 +325,73 @@ def test_change_questions_are_grounded_in_system1_estimates():
     assert grounded_answer("Would more threads per process help?", hints)[0] == "unclear"
     assert grounded_answer("Would moving to the GPU make it slower?", hints)[0] == "no"   # inverted question
     assert grounded_answer("Would the graphics card help?", None) is None              # no estimate: encoder answers
+
+
+def _device(fleet, name, gpu, mem, profile, peaks=None):
+    return fleet.register(name, {"name": name, "gpu_model": gpu, "gpu_memory_gb": mem}, profile, {},
+                          {"gpu_peak_gb": peaks or {}, "failed": {}})
+
+
+def test_fleet_sends_a_job_that_does_not_fit_to_a_bigger_gpu():
+    from hpc_ds1.fleet import Fleet
+    f = Fleet()
+    small = _device(f, "laptop", "RTX 4050 Laptop GPU", 6.0, {"llm_train": {"16": 0.1, "96": 1.2}},
+                    {"llm_train": {"16": 1.3, "96": 7.4}})
+    big = _device(f, "lab", "RTX 5090", 31.8, {})
+    fits = f.submit("llm_train", 16)
+    assert fits["device"] == small["id"]  # fits and is the only measured device: stays on the laptop
+    t = f.submit("llm_train", 96)
+    assert t["device"] == big["id"]
+    no = next(c for c in t["placement"]["candidates"] if c["device"] == small["id"])
+    assert not no["can_run"] and "7.4 GB" in no["why_not"] and "6 GB" in no["why_not"]
+    assert "laptop can't" in t["placement"]["reason"]
+    assert f.submit("llm_train", 128)["device"] == big["id"]  # unmeasured size: need fitted from the measured ones
+
+
+def test_fleet_requeues_a_task_that_failed_on_a_device():
+    from hpc_ds1.fleet import Fleet
+    f = Fleet()
+    a = _device(f, "a", "GPU A", 8.0, {"gemm": {"2048": 0.001}})
+    b = _device(f, "b", "GPU B", 8.0, {"gemm": {"2048": 0.002}})
+    t = f.submit("gemm", 2048)
+    assert t["device"] == a["id"]
+    f.poll(a["id"])
+    f.update(t["id"], a["id"], {"status": "failed", "error": "CUDA out of memory"})
+    assert t["status"] == "queued" and t["device"] == b["id"]
+    assert t["redirects"][0]["from"] == "a" and "out of memory" in t["redirects"][0]["reason"]
+    assert f.submit("gemm", 2048)["device"] == b["id"]  # a is remembered as unable to run it
+    f.poll(b["id"])
+    f.update(t["id"], b["id"], {"status": "failed", "error": "crash"})
+    assert t["status"] == "failed"  # nowhere left to go
+
+
+def test_collection_skips_slow_cpu_settings_from_a_real_probe():
+    from hpc_ds1.collect import _cpu_skip
+
+    class E:
+        hardware = {"cpu_threads": 16}
+    k = KERNELS["llm_train"]
+    cpu = {"ranks": 1, "threads": 2, "gpu": False, "precision": "bf16"}
+    assert _cpu_skip(E, k, 4, cpu, {}) is None  # nothing measured yet: measure it
+    assert "budget" in _cpu_skip(E, k, 4, cpu, {"bf16": (4, 70.0)})
+    assert _cpu_skip(E, k, 4, {**cpu, "gpu": True}, {"bf16": (4, 70.0)}) is None  # GPU settings are always measured
+    assert _cpu_skip(E, KERNELS["gemm"], 1024, cpu, {"bf16": (1024, 70.0)}) is None  # only GPU-class workloads
+
+
+def test_usable_gpu_memory_is_where_measured_runs_start_spilling():
+    from hpc_ds1.fleet import can_run, usable_gpu_memory
+    k = KERNELS["llm_train"]
+
+    def run(size, sec, peak):
+        return {"workload": "llm_train", "size": size, "ok": True, "correct": True,
+                "config": {"ranks": 1, "threads": 1, "gpu": True, "precision": "bf16"},
+                "telemetry": {"runtime_sec": sec, "gpu_peak_gb": peak}}
+    rows = [run(16, 0.085, 1.33), run(32, 0.167, 2.54), run(48, 0.718, 3.74), run(64, 1.94, 4.94)]
+    assert usable_gpu_memory(rows) == 3.74  # 48 is >2x slower per sequence than 16 and 32
+    assert usable_gpu_memory(rows[:2]) is None  # never slowed down: no limit learned
+    dev = {"name": "laptop", "hardware": {"gpu_model": "RTX 4050", "gpu_memory_gb": 6.0},
+           "limits": {"gpu_usable_gb": 3.74}}
+    assert can_run(dev, "llm_train", 32, 2.54)[0]
+    ok, why = can_run(dev, "llm_train", 48, 3.74)
+    assert not ok and "slow down sharply from 3.7 GB" in why
+    assert k.gpu_class
