@@ -410,3 +410,12 @@ def test_ui_pages_have_valid_javascript(page, tmp_path):
     f.write_text(js, encoding="utf-8")
     out = subprocess.run(["node", "--check", str(f)], capture_output=True, text=True)
     assert out.returncode == 0, out.stderr[:400]
+
+
+def test_fleet_spreads_unmeasured_jobs_across_identical_devices():
+    from hpc_ds1.fleet import Fleet
+    f = Fleet()
+    a = _device(f, "a", "RTX 5090", 31.8, {})
+    b = _device(f, "b", "RTX 5090", 31.8, {})
+    picks = [f.submit("llm_train", 96)["device"] for _ in range(4)]
+    assert picks.count(a["id"]) == 2 and picks.count(b["id"]) == 2

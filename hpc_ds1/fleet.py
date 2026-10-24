@@ -228,6 +228,10 @@ class Fleet:
     def online(self, d):
         return time.time() - d["last_seen"] < OFFLINE_AFTER_SEC
 
+    def _active(self, dev_id):
+        return sum(1 for t in self.tasks.values()
+                   if t["device"] == dev_id and t["status"] in ("queued", "running", "awaiting_approval"))
+
     def _queue_sec(self, dev_id):
         return sum(t["placement"]["chosen_estimate_sec"] or 0 for t in self.tasks.values()
                    if t["device"] == dev_id and t["status"] in ("queued", "running", "awaiting_approval"))
@@ -274,8 +278,10 @@ class Fleet:
             why = (f"earliest expected finish: {best['finish_sec']:.4g}s "
                    f"(queue {best['queue_sec']:.3g}s + run {best['expected_runtime_sec']:.3g}s)")
         else:
-            best = min(pool, key=lambda c: c["queue_sec"])
-            why = "no device that can run it has measured this kernel; sent to the least busy one"
+            # no runtime estimate: spread by how many jobs each device already has (seconds are unknown)
+            best = min(pool, key=lambda c: (self._active(c["device"]), c["queue_sec"]))
+            why = (f"no device that can run it has measured this kernel; sent to the least busy one "
+                   f"({self._active(best['device'])} job(s) waiting there)")
         if not able:
             why = "no device can comfortably run it; " + why
         rejected = [c for c in candidates if not c["can_run"]]

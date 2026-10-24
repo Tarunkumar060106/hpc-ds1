@@ -89,6 +89,9 @@ def main():
             pass
         return
 
+    if args.cmd in ("submit", "agent") and not str(args.server).startswith(("http://", "https://")):
+        raise SystemExit(f"hpc-ds1: --server must look like http://<coordinator-ip>:8765 (got {args.server!r})")
+
     if args.cmd == "submit":
         from .fleet import submit
         t = submit(args.server, args.token, args.workload, args.size, _config(args),
